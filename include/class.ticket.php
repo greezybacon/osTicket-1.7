@@ -866,7 +866,7 @@ class Ticket{
               
             //Only alerts dept members if the ticket is NOT assigned.
             if($cfg->alertDeptMembersONNewTicket() && !$this->isAssigned()) {
-                if(($members=$dept->getAvailableMembers()))
+                if(($members=$dept->getMembers()))
                     $recipients=array_merge($recipients, $members);
             }
             
@@ -877,6 +877,7 @@ class Ticket{
                 if(!is_object($staff) || !$staff->isAvailable() || in_array($staff->getEmail(),$sentlist)) continue;
                 $alert = str_replace("%staff",$staff->getFirstName(),$body);
                 $email->send($staff->getEmail(),$subj,$alert);
+                $sentlist[] = $staff->getEmail();
             }
            
            
@@ -1029,8 +1030,8 @@ class Ticket{
                 if(!is_object($staff) || !$staff->isAvailable() || in_array($staff->getEmail(),$sentlist)) continue;
                 $alert = str_replace('%staff', $staff->getFirstName(), $body);
                 $email->send($staff->getEmail(), $subj, $alert);
+                $sentlist[] = $staff->getEmail();
             }
-            print_r($sentlist);
         }
 
         return true;
@@ -1072,7 +1073,7 @@ class Ticket{
                     $recipients=array_merge($recipients, $members);
             } elseif($cfg->alertDeptMembersONOverdueTicket() && !$this->isAssigned()) {
                 //Only alerts dept members if the ticket is NOT assigned.
-                if(($members=$dept->getAvailableMembers()))
+                if(($members=$dept->getMembers()))
                     $recipients=array_merge($recipients, $members);
             }
             //Always alert dept manager??
@@ -1084,6 +1085,7 @@ class Ticket{
                 if(!is_object($staff) || !$staff->isAvailable() || in_array($staff->getEmail(),$sentlist)) continue;
                 $alert = str_replace("%staff",$staff->getFirstName(),$body);
                 $email->send($staff->getEmail(),$subj,$alert);
+                $sentlist[] = $staff->getEmail();
             }
 
         }
@@ -1200,7 +1202,7 @@ class Ticket{
                     $recipients+=$members;
             } elseif($cfg->alertDeptMembersONTransfer() && !$this->isAssigned()) {
                 //Only alerts dept members if the ticket is NOT assigned.
-                if(($members=$dept->getAvailableMembers()))
+                if(($members=$dept->getMembers()))
                     $recipients+=$members;
             }
 
@@ -1213,6 +1215,7 @@ class Ticket{
                 if(!is_object($staff) || !$staff->isAvailable() || in_array($staff->getEmail(),$sentlist)) continue;
                 $alert = str_replace("%staff",$staff->getFirstName(),$body);
                 $email->send($staff->getEmail(),$subj,$alert);
+                $sentlist[] = $staff->getEmail();
             }
          }
 
@@ -1361,7 +1364,7 @@ class Ticket{
                 if(!$staff || !$staff->getEmail() || !$staff->isAvailable() && in_array($staff->getEmail(),$sentlist)) continue;
                 $alert = str_replace("%staff",$staff->getFirstName(),$body);
                 $email->send($staff->getEmail(),$subj,$alert);
-                $sentlist[]=$staff->getEmail();
+                $sentlist[] = $staff->getEmail();
             }
         }
         
@@ -1544,7 +1547,7 @@ class Ticket{
                 if(in_array($staff->getEmail(),$sentlist) || ($thisstaff && $thisstaff->getId()==$staff->getId())) continue; 
                 $alert = str_replace('%staff',$staff->getFirstName(),$body);
                 $email->send($staff->getEmail(),$subj,$alert);
-                $sentlist[]=$staff->getEmail();
+                $sentlist[] = $staff->getEmail();
             }
         }
         
@@ -1552,10 +1555,12 @@ class Ticket{
     }
 
     //Print ticket... export the ticket thread as PDF.
-    function pdfExport() {
-        $pdf = new Ticket2PDF($this, true);
+    function pdfExport($psize='Letter', $notes=false) {
+        $pdf = new Ticket2PDF($this, $psize, $notes);
         $name='Ticket-'.$this->getExtId().'.pdf';
         $pdf->Output($name, 'I');
+        //Remember what the user selected - for autoselect on the next print.
+        $_SESSION['PAPER_SIZE'] = $psize;
         exit;
     }
 
@@ -1751,7 +1756,7 @@ class Ticket{
         global $cfg;
         
         /* Unknown or invalid staff */
-        if(!$staff || (!is_object($staff) && !($staff=Staff::lookup($staff))) || !$staff->isStaff())
+        if(!$staff || (!is_object($staff) && !($staff=Staff::lookup($staff))) || !$staff->isStaff() || $cfg->getDBVersion())
             return null;
 
 
@@ -1773,11 +1778,10 @@ class Ticket{
         if(($teams=$staff->getTeams()))
             $sql.=' OR ticket.team_id IN('.implode(',', array_filter($teams)).')';
 
-        if(!$staff->showAssignedOnly()) //Staff with limited access just see Assigned tickets.
-            $sql.=' OR ticket.dept_id IN('.implode(',',$staff->getDepts()).') ';
+        if(!$staff->showAssignedOnly() && ($depts=$staff->getDepts())) //Staff with limited access just see Assigned tickets.
+            $sql.=' OR ticket.dept_id IN('.implode(',', $depts).') ';
 
         $sql.=')';
-
 
         if(!$cfg || !($cfg->showAssignedTickets() || $staff->showAssignedTickets()))
             $sql.=' AND (ticket.staff_id=0 OR ticket.staff_id='.db_input($staff->getId()).') ';
@@ -2004,9 +2008,28 @@ class Ticket{
             $autorespond=false;
         }
 
+        // If a canned-response is immediately queued for this ticket,
+        // disable the autoresponse
+        if ($vars['cannedResponseId'])
+            $autorespond=false;
+
         /***** See if we need to send some alerts ****/
 
         $ticket->onNewTicket($vars['message'], $autorespond, $alertstaff);
+
+        if ($vars['cannedResponseId']
+                && ($canned = Canned::lookup($vars['cannedResponseId']))
+                && $canned->isEnabled()) {
+            $files = array();
+            foreach ($canned->getAttachments() as $file)
+                $files[] = $file['id'];
+            $ticket->postReply(array(
+                    'msgId'     => $msgid,
+                    'response'  =>
+                        $ticket->replaceTemplateVars($canned->getResponse()),
+                    'cannedattachments' => $files
+                ), null, $errors, true);
+        }
 
         /************ check if the user JUST reached the max. open tickets limit **********/
         if($cfg->getMaxOpenTickets()>0

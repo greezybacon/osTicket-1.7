@@ -19,6 +19,8 @@
 **********************************************************************/
 
 require_once(INCLUDE_DIR.'class.config.php'); //Config helper
+require_once(INCLUDE_DIR.'class.csrf.php'); //CSRF token class.
+
 define('LOG_WARN',LOG_WARNING);
 
 class osTicket {
@@ -32,10 +34,19 @@ class osTicket {
 
     var $config;
     var $session;
+    var $csrf;
 
     function osTicket($cfgId) {
+        
         $this->config = Config::lookup($cfgId);
-        $this->session = osTicketSession::start(SESSION_TTL); // start_session 
+
+        //DB based session storage was added starting with v1.7
+        if($this->config && !$this->getConfig()->getDBVersion())
+            $this->session = osTicketSession::start(SESSION_TTL); // start DB based session
+        else
+            session_start();
+
+        $this->csrf = new CSRF('__CSRFToken__');
     }
 
     function isSystemOnline() {
@@ -43,7 +54,7 @@ class osTicket {
     }
 
     function isUpgradePending() {
-        return (defined('SCHEMA_SIGNATURE') && strcasecmp($this->getConfig()->getSchemaSignature(), SCHEMA_SIGNATURE));
+        return (defined('SCHEMA_SIGNATURE') && strcasecmp($this->getDBSignature(), SCHEMA_SIGNATURE));
     }
 
     function getSession() {
@@ -57,6 +68,46 @@ class osTicket {
     function getConfigId() {
 
         return $this->getConfig()?$this->getConfig()->getId():0;
+    }
+
+    function getDBSignature() {
+        return $this->getConfig()->getSchemaSignature();
+    }
+
+    function getVersion() {
+        return THIS_VERSION;
+    }
+
+    function getCSRF(){
+        return $this->csrf;
+    }
+
+    function getCSRFToken() {
+        return $this->getCSRF()->getToken();
+    }
+
+    function getCSRFFormInput() {
+        return $this->getCSRF()->getFormInput();
+    }
+
+    function validateCSRFToken($token) {
+        return ($token && $this->getCSRF()->validateToken($token));
+    }
+
+    function checkCSRFToken($name='') {
+
+        $name = $name?$name:$this->getCSRF()->getTokenName();
+        if(isset($_POST[$name]) && $this->validateCSRFToken($_POST[$name]))
+            return true;
+       
+        if(isset($_SERVER['HTTP_X_CSRFTOKEN']) && $this->validateCSRFToken($_SERVER['HTTP_X_CSRFTOKEN']))
+            return true;
+
+        $msg=sprintf('Invalid CSRF token [%s] on %s',
+                ($_POST[$name].''.$_SERVER['HTTP_X_CSRFTOKEN']), THISPAGE);
+        $this->logWarning('Invalid CSRF Token '.$name, $msg);
+
+        return false;
     }
 
     function addExtraHeader($header) {
@@ -122,6 +173,10 @@ class osTicket {
         if(!($to=$this->getConfig()->getAdminEmail()))
             $to=ADMIN_EMAIL;
 
+
+        //append URL to the message
+        $message.="\n\n".THISPAGE;
+
         //Try getting the alert email.
         $email=null;
         if(!($email=$this->getConfig()->getAlertEmail())) 
@@ -155,6 +210,14 @@ class osTicket {
         return $this->log(LOG_ERR, $title, $error, $alert);
     }
 
+    function logDBError($title, $error, $alert=true) {
+
+        if($alert && !$this->getConfig()->alertONSQLError())
+            $alert =false;
+
+        return $this->log(LOG_ERR, $title, $error, $alert);
+    }
+
     function log($priority, $title, $message, $alert=false) {
 
         //We are providing only 3 levels of logs. Windows style.
@@ -180,8 +243,8 @@ class osTicket {
         if($alert)
             $this->alertAdmin($title, $message);
 
-
-        if($this->getConfig()->getLogLevel()<$level)
+        //Logging everything during upgrade.
+        if($this->getConfig()->getLogLevel()<$level && !$this->isUpgradePending())
             return false;
 
         //Save log based on system log level settings.

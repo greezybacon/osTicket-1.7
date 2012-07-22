@@ -173,7 +173,34 @@ $(document).ready(function(){
 
 
 
-    /* global inits */
+    /************ global inits *****************/
+
+    //Add CSRF token to the ajax requests.
+    // Many thanks to https://docs.djangoproject.com/en/dev/ref/contrib/csrf/ + jared.
+    $(document).ajaxSend(function(event, xhr, settings) {
+
+        function sameOrigin(url) {
+            // url could be relative or scheme relative or absolute
+            var host = document.location.host; // host + port
+            var protocol = document.location.protocol;
+            var sr_origin = '//' + host;
+            var origin = protocol + sr_origin;
+            // Allow absolute or scheme relative URLs to same origin
+            return (url == origin || url.slice(0, origin.length + 1) == origin + '/') || 
+                (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+                // or any other URL that isn't scheme relative or absolute i.e
+                // relative.
+                !(/^(\/\/|http:|https:).*/.test(url));    
+        }
+
+        function safeMethod(method) {
+            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        }
+        if (!safeMethod(settings.type) && sameOrigin(settings.url)) {
+            xhr.setRequestHeader("X-CSRFToken", $("meta[name=csrf_token]").attr("content"));
+        }
+
+       });
 
     /* Get config settings from the backend */
     $.get('ajax.php/config/ui.json',
@@ -245,7 +272,7 @@ $(document).ready(function(){
     });
 
     /* advanced search */
-    $("#overlay").css({
+    $("#overlay, #search_overlay").css({
         opacity : 0.3,
         top     : 0,
         left    : 0,
@@ -261,14 +288,14 @@ $(document).ready(function(){
     $('#go-advanced').click(function(e) {
         e.preventDefault();
         $('#result-count').html('');
-        $('#overlay').show();
+        $('#search_overlay').show();
         $('#advanced-search').show();
     });
 
     $('#advanced-search').delegate('a.close, input.close', 'click', function(e) {
         e.preventDefault();
         $('#advanced-search').hide()
-        $('#overlay').hide();
+        $('#search_overlay').hide();
     }).delegate('#status', 'change', function() {
         switch($(this).val()) {
             case 'closed':
