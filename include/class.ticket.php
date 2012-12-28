@@ -1333,8 +1333,15 @@ class Ticket {
             foreach( $recipients as $k=>$staff) {
                 if(!$staff || !$staff->getEmail() || !$staff->isAvailable() || in_array($staff->getEmail(), $sentlist)) continue;
                 $alert = str_replace('%{recipient}', $staff->getFirstName(), $msg['body']);
-                $email->sendAlert($staff->getEmail(), $msg['subj'], $alert);
+                $emsg_id = $email->sendAlert($staff->getEmail(), $msg['subj'], $alert);
                 $sentlist[] = $staff->getEmail();
+
+                // Record the message id of the outgoing message with the
+                // message ticket thread posting
+                $sql='INSERT INTO '.TICKET_EMAIL_INFO_TABLE
+                    .' SET message_id='.db_input($msgid)
+                    .', email_mid='.db_input($emsg_id);
+                db_query($sql);
             }
         }
 
@@ -1442,7 +1449,14 @@ class Ticket {
             //Set attachments if emailing.
             $attachments = $cfg->emailAttachments()?$response->getAttachments():array();
             //TODO: setup  5 param (options... e.g mid trackable on replies)
-            $email->send($this->getEmail(), $msg['subj'], $msg['body'], $attachments);
+            $emsg_id = $email->send($this->getEmail(), $msg['subj'], $msg['body'], $attachments);
+
+            // Record the email message id of the outgoing message in
+            // association with the response ticket thread posting
+            $sql='INSERT INTO '.TICKET_EMAIL_INFO_TABLE
+                .' SET message_id='.db_input($respId)
+                .', email_mid='.db_input($emsg_id);
+            db_query($sql);
         }
 
         return $response;
