@@ -233,6 +233,8 @@ class MailFetcher {
                       'subject'=>@$headerinfo->subject,
                       'mid'    => trim(@$headerinfo->message_id),
                       'header' => $this->getHeader($mid),
+                      'in-reply-to' => $headerinfo->in_reply_to,
+                      'references' => $headerinfo->references
                       );
 
         if ($replyto = $headerinfo->reply_to) {
@@ -386,8 +388,133 @@ class MailFetcher {
         return $body;
     }
 
-    //email to ticket
-    function createTicket($mid) {
+    /**
+     * postResponse
+     *
+     * Posts a response thread item to the referenced message, if one is
+     * matched in message info table. The method will use the email to find
+     * messages in the thread table that have the message id associated. It
+     * will then use the ::attachMessage() method to determine if the
+     * message can/should be attached in the thread rather than creating a
+     * new ticket.
+     */
+    function postResponse($mid) {
+        if(!($mailinfo = $this->getHeaderInfo($mid)))
+            return false;
+
+        // Search for messages using the References header, then the
+        // in-reply-to header
+        $search = 'SELECT message_id FROM '.TICKET_EMAIL_INFO_TABLE
+               . ' WHERE mid=%s';
+
+        // Ensure the mail id is not already logged for a message/response
+        if (db_result(db_query(sprintf($search, $mailinfo['mid']))))
+            return true; // Reporting success so the email can be moved or deleted.
+
+        foreach (array('references','in-reply-to') as $header) {
+            $matches = array();
+            if (!preg_match_all('<[^>@]+@[^>]+>', $mailinfo[$header],
+                        $matches))
+                continue;
+
+            foreach ($matches[0] as $mid) {
+                $res = db_query(sprintf($search, $mid));
+                while ($row = db_fetch_row($res)) {
+                    $thread = $row[0];
+                    // At this point, we have the message/response that the
+                    // email is in reply to. Attempt to attach the message.
+                    // If unable to, continue onward with the other message
+                    // ids
+                    if ($this->attachMessage($mid, $mailinfo, $thread))
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * attachMessage
+     *
+     * After some security and sanity checks, attaches the body and subject
+     * of the message in reply to the thread item referenced by the threadId
+     * parameter
+     */
+    function attachMessage($mid, $mailinfo, $threadId) {
+        $info = array();
+        $subject = $this->mime_decode($mailinfo['subject']);
+        $message = Format::stripEmptyLines($this->getBody($mid));
+
+        if ($threadId) {
+            // Lookup the ticket by the thread message
+            $sql = 'SELECT thread_type, ticket_id FROM '.TICKET_THREAD_TABLE
+                . ' WHERE id='.db_input($threadId);
+            list($type, $id) = db_fetch_row(db_query($sql));
+
+            $ticket = Ticket::lookup($id);
+
+            // TODO: Detect and strip content of previous thread posts in
+            //       the message body
+        }
+        // Search for ticket by the [#123456] in the subject line
+        elseif ($subject && preg_match ("[[#][0-9]{1,10}]", $var['subject'], $regs)) {
+            $tid = trim(preg_replace("/[^0-9]/", "", $regs[0]));
+            $ticket = Ticket::lookupByExtId($tid);
+        }
+
+        // Require ticket to process the email further
+        if (!$ticket)
+            return false;
+
+        // The owner of the ticket will post messages, staff will post
+        // responses
+        if (0 === strcasecmp($ticket->getEmail(), $mailinfo['email']))
+            $post_type = 'M';
+        elseif ($threadId) {
+            // Search the staff table for an email address matching the from
+            // email address
+            $sql = 'SELECT staff_id FROM '.STAFF_TABLE
+                . ' WHERE isactive AND email='.db_input($mailinfo['email']);
+
+            $res = db_query($sql);
+            while (list($staff_id) = db_fetch_row($res)) {
+                if ($ticket->checkStaffAccess($staff_id)) {
+                    // TODO: Capture the allowed staff to be marked as the
+                    //       poster in the response
+                    $post_type = 'R';
+                    break;
+                }
+            }
+        }
+
+        // TODO: Other checks:
+        //       - Require open ticket?
+
+        if ($post_type == 'R') {
+            $var['msgId'] = $threadId;
+            $var['response'] = $message;
+            // XXX: Since this is automated, the system will log that the
+            //      system made the response (Canned) rather than the staff
+            //      this email is from
+            $respId = $ticket->postReply($var, $errors, true);
+            if ($respId) {
+                $sql='INSERT INTO '.TICKET_EMAIL_INFO_TABLE
+                    .' SET message_id='.db_input($respId)
+                    .', email_mid='.db_input($mailinfo['mid'])
+                    .', headers='.db_input($this->getHeader($mid));
+                db_query($sql);
+            }
+            return !$errors;
+        }
+        elseif ($post_type == 'M')
+            return !!$ticket->postMessage($message, 'Email',
+                    $mailinfo['mid'], $this->getHeader($mid));
+        else
+            return false;
+    }
+
+    //email to ticket 
+    function createTicket($mid) { 
         global $ost;
 
         if(!($mailinfo = $this->getHeaderInfo($mid)))
@@ -423,21 +550,12 @@ class MailFetcher {
 
         $ticket=null;
         $newticket=true;
-        //Check the subject line for possible ID.
-        if($vars['subject'] && preg_match ("[[#][0-9]{1,10}]", $vars['subject'], $regs)) {
-            $tid=trim(preg_replace("/[^0-9]/", "", $regs[0]));
-            //Allow mismatched emails?? For now NO.
-            if(!($ticket=Ticket::lookupByExtId($tid, $vars['email'])))
-                $ticket=null;
-        }
-
+        
         $errors=array();
-        if($ticket) {
-            if(!($message=$ticket->postMessage($vars, 'Email')))
-                return false;
-
-        } elseif (($ticket=Ticket::create($vars, $errors, 'Email'))) {
-            $message = $ticket->getLastMessage();
+        if ($this->attachMessage($mid, $mailinfo, false)) {
+            return true;
+        } elseif (($ticket=Ticket::create($var, $errors, 'Email'))) {
+            $msgid = $ticket->getLastMsgId();
         } else {
             //Report success if the email was absolutely rejected.
             if(isset($errors['errno']) && $errors['errno'] == 403)
@@ -490,7 +608,7 @@ class MailFetcher {
         //echo "New Emails:  $nummsgs\n";
         $msgs=$errors=0;
         for($i=$nummsgs; $i>0; $i--) { //process messages in reverse.
-            if($this->createTicket($i)) {
+            if($this->postMessage($i) || $this->createTicket($i)) {
 
                 imap_setflag_full($this->mbox, imap_uid($this->mbox, $i), "\\Seen", ST_UID); //IMAP only??
                 if((!$archiveFolder || !imap_mail_move($this->mbox, $i, $archiveFolder)) && $delete)
