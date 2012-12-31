@@ -1575,6 +1575,10 @@ class Ticket {
                 $alert = str_replace('%{recipient}', $staff->getFirstName(), $msg['body']);
                 $email->sendAlert($staff->getEmail(), $msg['subj'], $alert, $attachments);
                 $sentlist[] = $staff->getEmail();
+
+                // TODO: Record the outgoing message id with the note ticket
+                //       thread posting. But how should an email response be
+                //       filed?
             }
         }
 

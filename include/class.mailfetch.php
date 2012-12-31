@@ -440,16 +440,17 @@ class MailFetcher {
      * of the message in reply to the thread item referenced by the threadId
      * parameter
      */
-    function attachMessage($mid, $mailinfo, $threadId) {
+    function attachMessage($mid, $mailinfo, $threadId=false) {
         $info = array();
         $subject = $this->mime_decode($mailinfo['subject']);
         $message = Format::stripEmptyLines($this->getBody($mid));
+        $thread_type = $staff = null;
 
         if ($threadId) {
             // Lookup the ticket by the thread message
             $sql = 'SELECT thread_type, ticket_id FROM '.TICKET_THREAD_TABLE
                 . ' WHERE id='.db_input($threadId);
-            list($type, $id) = db_fetch_row(db_query($sql));
+            list($thread_type, $id) = db_fetch_row(db_query($sql));
 
             $ticket = Ticket::lookup($id);
 
@@ -478,6 +479,7 @@ class MailFetcher {
 
             $res = db_query($sql);
             while (list($staff_id) = db_fetch_row($res)) {
+                $staff = Staff::lookup($staff_id);
                 if ($ticket->checkStaffAccess($staff_id)) {
                     // TODO: Capture the allowed staff to be marked as the
                     //       poster in the response
@@ -493,10 +495,14 @@ class MailFetcher {
         if ($post_type == 'R') {
             $var['msgId'] = $threadId;
             $var['response'] = $message;
-            // XXX: Since this is automated, the system will log that the
-            //      system made the response (Canned) rather than the staff
-            //      this email is from
-            $respId = $ticket->postReply($var, $errors, true);
+            if ($thread_type == 'N')
+                $respId = $ticket->postNote($var, $errors, $staff, false);
+            else
+                // XXX: Since this is automated, the system will log that
+                //      the system made the response (Canned) rather than
+                //      the staff this email is from
+                $respId = $ticket->postReply($var, $errors, false);
+
             if ($respId) {
                 $sql='INSERT INTO '.TICKET_EMAIL_INFO_TABLE
                     .' SET message_id='.db_input($respId)
