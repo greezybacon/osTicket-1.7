@@ -338,13 +338,17 @@ class MailFetcher {
                 }
             }
 
+            $content_id = ($part->ifid)
+                ? rtrim(ltrim($part->id, '<'), '>') : false;
+
             if($filename) {
                 return array(
                         array(
                             'name'  => $this->mime_decode($filename),
                             'type'  => $this->getMimeType($part),
                             'encoding' => $part->encoding,
-                            'index' => ($index?$index:1)
+                            'index' => ($index?$index:1),
+                            'cid'   => $content_id,
                             )
                         );
             }
@@ -373,18 +377,19 @@ class MailFetcher {
 
     function getBody($mid) {
 
-        $body ='';
-        if ($body = $this->getPart($mid,'TEXT/PLAIN', $this->charset))
-            // The Content-Type was text/plain, so escape anything that
-            // looks like HTML
-            $body=Format::htmlchars($body);
-        elseif ($body = $this->getPart($mid,'TEXT/HTML', $this->charset)) {
+        if ($body = $this->getPart($mid,'TEXT/HTML', $this->charset)) {
             //Convert tags of interest before we striptags
-            $body=str_replace("</DIV><DIV>", "\n", $body);
-            $body=str_replace(array("<br>", "<br />", "<BR>", "<BR />"), "\n", $body);
+            //$body=str_replace("</DIV><DIV>", "\n", $body);
+            //$body=str_replace(array("<br>", "<br />", "<BR>", "<BR />"), "\n", $body);
             $body=Format::safe_html($body); //Balance html tags & neutralize unsafe tags.
         }
-
+        elseif ($body = $this->getPart($mid,'TEXT/PLAIN', $this->charset)) {
+            // Escape anything that looks like HTML chars since what's in
+            // the database will be considered HTML
+            // TODO: Consider the reverse of the above edits (replace \n
+            //       <br/>
+            $body=Format::htmlchars($body);
+        }
         return $body;
     }
 
@@ -429,8 +434,7 @@ class MailFetcher {
             if ($message === true)
                 // Email has been processed previously
                 return true;
-            elseif ($message)
-                $ticket = $message->getTicket();
+            $ticket = $message->getTicket();
         } elseif (($ticket=Ticket::create($vars, $errors, 'Email'))) {
             $message = $ticket->getLastMessage();
         } else {
@@ -448,22 +452,26 @@ class MailFetcher {
             return null;
         }
 
-        //Save attachments if any.
-        if($message
-                && $ost->getConfig()->allowEmailAttachments()
+        // Fetch attachments if any.
+        if($ost->getConfig()->allowEmailAttachments()
                 && ($struct = imap_fetchstructure($this->mbox, $mid))
                 && ($attachments=$this->getAttachments($struct))) {
 
+            $vars['attachments'] = array();
             foreach($attachments as $a ) {
-                $file = array('name'  => $a['name'], 'type'  => $a['type']);
+                $file = array('name' => $a['name'], 'type' => $a['type']);
 
                 //Check the file  type
                 if(!$ost->isFileTypeAllowed($file))
                     $file['error'] = 'Invalid file type (ext) for '.Format::htmlchars($file['name']);
                 else //only fetch the body if necessary TODO: Make it a callback.
                     $file['data'] = $this->decode(imap_fetchbody($this->mbox, $mid, $a['index']), $a['encoding']);
-
-                $message->importAttachment($file);
+                if ($a['cid']) {
+                    $file['hash'] = Misc::randCode(32);
+                    $vars['message'] = str_replace('src="cid:'.$a['cid'].'"',
+                        'src="cid:'.$file['hash'].'"', $vars['message']);
+                }
+                $vars['attachments'][] = $file;
             }
         }
 

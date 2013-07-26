@@ -158,14 +158,14 @@ class Mail_Parse {
 
     function getBody(){
 
-        $body='';
-        if($body=$this->getPart($this->struct,'text/plain'))
-            $body = Format::htmlchars($body);
-        elseif($body=$this->getPart($this->struct,'text/html')) {
+        if ($body=$this->getPart($this->struct,'text/html')) {
             //Cleanup the html.
-            $body=str_replace("</DIV><DIV>", "\n", $body);
-            $body=str_replace(array("<br>", "<br />", "<BR>", "<BR />"), "\n", $body);
+            //$body=str_replace("</DIV><DIV>", "\n", $body);
+            //$body=str_replace(array("<br>", "<br />", "<BR>", "<BR />"), "\n", $body);
             $body=Format::safe_html($body); //Balance html tags & neutralize unsafe tags.
+        }
+        elseif ($body=$this->getPart($this->struct,'text/plain')) {
+            $body = Format::htmlchars($body);
         }
         return $body;
     }

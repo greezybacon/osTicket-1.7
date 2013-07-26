@@ -467,6 +467,15 @@ Class ThreadEntry {
         return $this->attachments;
     }
 
+    function getAttachmentUrls() {
+        $json = array();
+        foreach ($this->getAttachments() as $att) {
+            $json[$att['file_hash']] = 'image.php?h='.
+                $att['file_hash'] .strtolower(md5($att['file_id'].session_id().$att['file_hash']));
+        }
+        return $json;
+    }
+
     function getAttachmentsLinks($file='attachment.php', $target='', $separator=' ') {
 
         $str='';
@@ -687,7 +696,7 @@ Class ThreadEntry {
             .' ,thread_type='.db_input($vars['type'])
             .' ,ticket_id='.db_input($vars['ticketId'])
             .' ,title='.db_input(Format::sanitize($vars['title'], true))
-            .' ,body='.db_input(Format::sanitize($vars['body'], true))
+            .' ,body='.db_input(Format::sanitize($vars['body'], false))
             .' ,staff_id='.db_input($vars['staffId'])
             .' ,poster='.db_input($vars['poster'])
             .' ,source='.db_input($vars['source']);

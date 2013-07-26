@@ -341,12 +341,23 @@ if(!$cfg->showNotesInline()) { ?>
                 <th width="440"><span><?php echo Format::htmlchars($entry['title']); ?></span></th>
                 <th width="300" class="tmeta"><?php echo Format::htmlchars($entry['poster']); ?></th>
             </tr>
-            <tr><td colspan=3><?php echo Format::display($entry['body']); ?></td></tr>
+            <tr><td colspan="3" class="ticket-thread-body" id="thread-id-<?php
+                echo $entry['id']; ?>"><?php
+                echo Format::display($entry['body']); ?></td></tr>
             <?php
             if($entry['attachments']
                     && ($tentry=$ticket->getThreadEntry($entry['id']))
                     && ($links=$tentry->getAttachmentsLinks())) {?>
             <tr>
+                <script type="text/javascript">
+                    var urls=<?php echo json_encode($tentry->getAttachmentUrls()); ?>;
+                    $.each(urls, function(hash, url) {
+                        $('.ticket-thread-body img[src^=cid]').each(function(i, el) {
+                            if ($(el).attr('src') == 'cid:' + hash)
+                                $(el).attr('src', url);
+                        });
+                    });
+                </script>
                 <td class="info" colspan=3><?php echo $links; ?></td>
             </tr>
             <?php

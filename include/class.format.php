@@ -124,7 +124,9 @@ class Format {
         $config = array(
                 'safe' => 1, //Exclude applet, embed, iframe, object and script tags.
                 'balance' => 1, //balance and close unclosed tags.
-                'comment' => 1  //Remove html comments (OUTLOOK LOVE THEM)
+                'comment' => 1, //Remove html comments (OUTLOOK LOVE THEM)
+                'tidy' => -1, // Clean extra whitspace
+                'schemes' => 'href: aim, feed, file, ftp, gopher, http, https, irc, mailto, news, nntp, sftp, ssh, telnet; *:file, http, https; src: cid'
                 );
 
         return Format::html($html, $config);
