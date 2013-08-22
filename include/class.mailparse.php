@@ -226,6 +226,10 @@ class Mail_Parse {
             if(!$this->decode_bodies && $part->headers['content-transfer-encoding'])
                 $file['encoding'] = $part->headers['content-transfer-encoding'];
 
+            // Include Content-Id (for inline-images), stripping the <>
+            $file['cid'] = (isset($part->headers['content-id']))
+                ? rtrim(ltrim($part->headers['content-id'], '<'), '>') : false;
+
             return array($file);
         }
 

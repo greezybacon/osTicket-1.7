@@ -467,11 +467,11 @@ Class ThreadEntry {
         return $this->attachments;
     }
 
-    function getAttachmentUrls() {
+    function getAttachmentUrls($script='image.php') {
         $json = array();
         foreach ($this->getAttachments() as $att) {
-            $json[$att['file_hash']] = 'image.php?h='.
-                $att['file_hash'] .strtolower(md5($att['file_id'].session_id().$att['file_hash']));
+            $json[$att['file_hash']] = sprintf('%s?h=%s', $script,
+                $att['file_hash'].strtolower(md5($att['file_id'].session_id().$att['file_hash'])));
         }
         return $json;
     }
@@ -691,6 +691,20 @@ Class ThreadEntry {
         //Must have...
         if(!$vars['ticketId'] || !$vars['type'] || !in_array($vars['type'], array('M','R','N')))
             return false;
+
+        if (isset($vars['attachments'])) {
+            foreach ($vars['attachments'] as $a) {
+                // Change <img src="cid:"> inside the message to point to
+                // a unique hash-code for the attachment. Since the
+                // content-id will be discarded, only the unique hash-code
+                // will be available to retrieve the image later
+                if ($a['cid']) {
+                    $a['hash'] = Misc::randCode(32);
+                    $vars['body'] = str_replace('src="cid:'.$a['cid'].'"',
+                        'src="cid:'.$a['hash'].'"', $vars['body']);
+                }
+            }
+        }
 
         $sql=' INSERT INTO '.TICKET_THREAD_TABLE.' SET created=NOW() '
             .' ,thread_type='.db_input($vars['type'])

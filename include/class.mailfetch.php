@@ -466,11 +466,8 @@ class MailFetcher {
                     $file['error'] = 'Invalid file type (ext) for '.Format::htmlchars($file['name']);
                 else //only fetch the body if necessary TODO: Make it a callback.
                     $file['data'] = $this->decode(imap_fetchbody($this->mbox, $mid, $a['index']), $a['encoding']);
-                if ($a['cid']) {
-                    $file['hash'] = Misc::randCode(32);
-                    $vars['message'] = str_replace('src="cid:'.$a['cid'].'"',
-                        'src="cid:'.$file['hash'].'"', $vars['message']);
-                }
+                // Include the Content-Id if specified (for inline images)
+                $file['cid'] = isset($a['cid']) ? $a['cid'] : false;
                 $vars['attachments'][] = $file;
             }
         }
