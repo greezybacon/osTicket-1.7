@@ -18,7 +18,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
-require('staff.inc.php');
+require('client.inc.php');
 require_once(INCLUDE_DIR.'class.file.php');
 $h=trim($_GET['h']);
 //basic checks
@@ -27,8 +27,5 @@ if(!$h  || strlen($h)!=64  //32*2
         || strcasecmp($h, $file->getDownloadHash())) //next 32 is file id + session hash.
     Http::response(404, 'Unknown or invalid file');
 
-if ($_GET['s'] && is_numeric($_GET['s']))
-    $file->display($_GET['s']);
-else
-    $file->display();
+$file->display();
 ?>

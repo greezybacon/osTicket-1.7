@@ -15,6 +15,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 include_once(INCLUDE_DIR.'class.ticket.php');
+include_once(INCLUDE_DIR.'class.draft.php');
 
 //Ticket thread.
 class Thread {
@@ -146,10 +147,6 @@ class Thread {
         //Add ticket Id.
         $vars['ticketId'] = $this->getTicketId();
 
-        // DELME: When HTML / rich-text is supported
-        $vars['title'] = Format::htmlchars($vars['title']);
-        $vars['body'] = Format::htmlchars($vars['body']);
-
         return Note::create($vars, $errors);
     }
 
@@ -158,20 +155,12 @@ class Thread {
         $vars['ticketId'] = $this->getTicketId();
         $vars['staffId'] = 0;
 
-        // DELME: When HTML / rich-text is supported
-        $vars['title'] = Format::htmlchars($vars['title']);
-        $vars['body'] = Format::htmlchars($vars['body']);
-
         return Message::create($vars, $errors);
     }
 
     function addResponse($vars, &$errors) {
 
         $vars['ticketId'] = $this->getTicketId();
-
-        // DELME: When HTML / rich-text is supported
-        $vars['title'] = Format::htmlchars($vars['title']);
-        $vars['body'] = Format::htmlchars($vars['body']);
 
         return Response::create($vars, $errors);
     }
@@ -299,6 +288,16 @@ Class ThreadEntry {
 
     function getBody() {
         return $this->ht['body'];
+    }
+
+    function setBody($body) {
+        global $cfg;
+
+        $sql='UPDATE '.TICKET_THREAD_TABLE.' SET updated=NOW()'
+            .',body='.db_input(Format::sanitize($body,
+                !$cfg->isHtmlThreadEnabled()))
+            .' WHERE id='.db_input($this->getId());
+        return db_query($sql) && db_affected_rows();
     }
 
     function getCreateDate() {
@@ -470,8 +469,13 @@ Class ThreadEntry {
     function getAttachmentUrls($script='image.php') {
         $json = array();
         foreach ($this->getAttachments() as $att) {
-            $json[$att['file_hash']] = sprintf('%s?h=%s', $script,
-                $att['file_hash'].strtolower(md5($att['file_id'].session_id().$att['file_hash'])));
+            $json[$att['file_hash']] = array(
+                'url' => sprintf('%s?h=%s', $script,
+                    $att['file_hash'].strtolower(md5($att['file_id'].session_id().$att['file_hash']))),
+                'download_url' => sprintf('attachment.php?id=%d&h=%s', $att['attach_id'],
+                    strtolower(md5($att['file_id'].session_id().$att['file_hash']))),
+                'filename' => $att['name'],
+            );
         }
         return $json;
     }
@@ -693,7 +697,7 @@ Class ThreadEntry {
             return false;
 
         if (isset($vars['attachments'])) {
-            foreach ($vars['attachments'] as $a) {
+            foreach ($vars['attachments'] as &$a) {
                 // Change <img src="cid:"> inside the message to point to
                 // a unique hash-code for the attachment. Since the
                 // content-id will be discarded, only the unique hash-code
@@ -704,13 +708,23 @@ Class ThreadEntry {
                         'src="cid:'.$a['hash'].'"', $vars['body']);
                 }
             }
+            unset($a);
+        }
+
+        $vars['body'] = Format::sanitize($vars['body'],
+            !$cfg->isHtmlThreadEnabled());
+        if (!$cfg->isHtmlThreadEnabled()) {
+            // Data in the database is assumed to be HTML, change special
+            // plain text XML characters
+            $vars['title'] = Format::htmlchars($vars['title']);
+            $vars['body'] = Format::htmlchars($vars['body']);
         }
 
         $sql=' INSERT INTO '.TICKET_THREAD_TABLE.' SET created=NOW() '
             .' ,thread_type='.db_input($vars['type'])
             .' ,ticket_id='.db_input($vars['ticketId'])
             .' ,title='.db_input(Format::sanitize($vars['title'], true))
-            .' ,body='.db_input(Format::sanitize($vars['body'], false))
+            .' ,body='.db_input($vars['body'])
             .' ,staff_id='.db_input($vars['staffId'])
             .' ,poster='.db_input($vars['poster'])
             .' ,source='.db_input($vars['source']);
@@ -750,6 +764,11 @@ Class ThreadEntry {
             $vars['mid'] = sprintf('<%s@%s>', Misc::randCode(24),
                 substr(md5($cfg->getUrl()), -10));
         $entry->saveEmailInfo($vars);
+
+        // Inline images (attached to the draft)
+        if (isset($vars['draft_id']) && $vars['draft_id'])
+            if ($draft = Draft::lookup($vars['draft_id']))
+                $entry->saveAttachments($draft->getAttachmentIds($vars['body']));
 
         return $entry;
     }

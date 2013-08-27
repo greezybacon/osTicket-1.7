@@ -154,6 +154,28 @@ class AttachmentFile {
     function display() {
         $this->makeCacheable();
 
+        if ($scale && extension_loaded('gd')) {
+            $image = imagecreatefromstring($this->getData());
+            $width = imagesx($image);
+            if ($scale <= $width) {
+                $height = imagesy($image);
+                if ($width > $height) {
+                    $heightp = $height * (int)$scale / $width;
+                    $widthp = $scale;
+                } else {
+                    $widthp = $width * (int)$scale / $height;
+                    $heightp = $scale;
+                }
+                $thumb = imagecreatetruecolor($widthp, $heightp);
+                $white = imagecolorallocate($thumb, 255,255,255);
+                imagefill($thumb, 0, 0, $white);
+                imagecopyresized($thumb, $image, 0, 0, 0, 0, $widthp,
+                    $heightp, $width, $height);
+                header('Content-Type: image/png');
+                imagepng($thumb);
+                return;
+            }
+        }
         header('Content-Type: '.($this->getType()?$this->getType():'application/octet-stream'));
         header('Content-Length: '.$this->getSize());
         $this->sendData();
@@ -332,9 +354,7 @@ class AttachmentFile {
                 .'SELECT DISTINCT(file_id) FROM ('
                     .'SELECT file_id FROM '.TICKET_ATTACHMENT_TABLE
                     .' UNION ALL '
-                    .'SELECT file_id FROM '.CANNED_ATTACHMENT_TABLE
-                    .' UNION ALL '
-                    .'SELECT file_id FROM '.FAQ_ATTACHMENT_TABLE
+                    .'SELECT file_id FROM '.ATTACHMENT_TABLE
                 .') still_loved'
             .') AND `ft` = "T"';
 

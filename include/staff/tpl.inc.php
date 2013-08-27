@@ -27,7 +27,7 @@ if (is_a($template, EmailTemplateGroup)) {
     $action = 'updatetpl';
     $extras = array();
     $msgtemplates=$template->getGroup()->all_names;
-    $info=array_merge(array('subj'=>$template->getSubject(), 'body'=>$template->getBody()),$info);
+    $info=array_merge(array('subj'=>$template->getSubject(), 'body'=>$template->getBodyWithImages()),$info);
 }
 $info['tpl']=($info['tpl'] && $msgtemplates[$info['tpl']])?$info['tpl']:'ticket.autoresp';
 $tpl=$msgtemplates[$info['tpl']];
@@ -86,16 +86,42 @@ $tpl=$msgtemplates[$info['tpl']];
         </tr>
         <tr>
             <td colspan="2">
-                <strong>Message Body:</strong> <em>Email message body.</em> <font class="error">*&nbsp;<?php echo $errors['body']; ?></font><br>
-                <textarea name="body" cols="21" rows="16" style="width:98%;" wrap="soft" ><?php echo $info['body']; ?></textarea>
+                <div style="margin-bottom:0.5em;margin-top:0.5em">
+                <strong>Message Body:</strong> <em>Email message body.</em> <font class="error">*&nbsp;<?php echo $errors['body']; ?></font>
+                <span class="pull-right draft-saved faded"
+                    style="margin-right:1em;display:none;"
+                    >Draft Saved</span>
+                </div>
+                <input type="hidden" name="draft_id" value=""/>
+                <textarea name="body" cols="21" rows="16" style="width:98%;" wrap="soft"
+                    class="richtext allow-images"><?php echo $info['body']; ?></textarea>
             </td>
         </tr>
     </tbody>
 </table>
 <p style="padding-left:210px;">
     <input class="button" type="submit" name="submit" value="Save Changes">
-    <input class="button" type="reset" name="reset" value="Reset Changes">
+    <input class="button" type="reset" name="reset" value="Reset Changes" onclick="javascript:
+        $(this.form).find('textarea.richtext')
+            .redactor('deleteDraft');
+        location.reload();" />
     <input class="button" type="button" name="cancel" value="Cancel Changes"
         onclick='window.location.href="templates.php?tpl_id=<?php echo $tpl_id; ?>"'>
 </p>
 </form>
+<script type="text/javascript">
+$(function() {
+    getConfig().then(function(c) {
+        if (c.html_thread) {
+            $('.richtext.allow-images').each(function(i, editor) {
+                var element = $(editor);
+                element.redactor({
+                    'plugins': ['draft','fontcolor','fontfamily'],
+                    'draft_namespace': 'tpl.<?php echo $selected; ?>',
+                    'draft_object_id': <?php echo $tpl_id; ?>,
+                });
+            });
+        }
+    });
+});
+</script>

@@ -15,6 +15,15 @@ CREATE TABLE `%TABLE_PREFIX%api_key` (
   UNIQUE KEY `apikey` (`apikey`)
 ) DEFAULT CHARSET=utf8;
 
+DROP TABLE IF EXISTS `%TABLE_PREFIX%attachment`;
+CREATE TABLE `%TABLE_PREFIX%attachment` (
+  `object_id` int(11) unsigned NOT NULL,
+  `type` char(1) NOT NULL,
+  `file_id` int(11) unsigned NOT NULL,
+  `inline` tinyint(1) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`object_id`,`file_id`,`type`)
+) DEFAULT CHARSET=utf8;
+
 DROP TABLE IF EXISTS `%TABLE_PREFIX%faq`;
 CREATE TABLE IF NOT EXISTS `%TABLE_PREFIX%faq` (
   `faq_id` int(10) unsigned NOT NULL auto_increment,
@@ -30,13 +39,6 @@ CREATE TABLE IF NOT EXISTS `%TABLE_PREFIX%faq` (
   UNIQUE KEY `question` (`question`),
   KEY `category_id` (`category_id`),
   KEY `ispublished` (`ispublished`)
-) DEFAULT CHARSET=utf8;
-
-DROP TABLE IF EXISTS `%TABLE_PREFIX%faq_attachment`;
-CREATE TABLE IF NOT EXISTS `%TABLE_PREFIX%faq_attachment` (
-  `faq_id` int(10) unsigned NOT NULL,
-  `file_id` int(10) unsigned NOT NULL,
-  PRIMARY KEY  (`faq_id`,`file_id`)
 ) DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `%TABLE_PREFIX%faq_category`;
@@ -211,6 +213,17 @@ CREATE TABLE `%TABLE_PREFIX%department` (
 INSERT INTO `%TABLE_PREFIX%department` (`sla_id`, `dept_name`, `dept_signature`, `ispublic`, `ticket_auto_response`, `message_auto_response`) VALUES
   (0, 'Support', 'Support Dept', 1, 1, 1),
   ((SELECT `id` FROM `%TABLE_PREFIX%sla` ORDER BY `id` LIMIT 1), 'Billing', 'Billing Dept', 1, 1, 1);
+
+DROP TABLE IF EXISTS `%TABLE_PREFIX%draft`;
+CREATE TABLE `%TABLE_PREFIX%draft` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `staff_id` int(11) unsigned NOT NULL,
+  `namespace` varchar(32) NOT NULL DEFAULT '',
+  `body` text NOT NULL,
+  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `%TABLE_PREFIX%email`;
 CREATE TABLE `%TABLE_PREFIX%email` (
@@ -479,15 +492,8 @@ INSERT INTO `%TABLE_PREFIX%canned_response` (`isenabled`, `title`, `response`) V
   (1, 'What is osTicket (sample)?', '\r\nosTicket is a widely-used open source support ticket system, an attractive alternative to higher-cost and complex customer support systems - simple, lightweight, reliable, open source, web-based and easy to setup and use.'),
   (1, 'Sample (with variables)', '\r\n%{ticket.name},\r\n\r\nYour ticket #%{ticket.number} created on %{ticket.create_date} is in %{ticket.dept.name} department.\r\n\r\n');
 
-DROP TABLE IF EXISTS `%TABLE_PREFIX%canned_attachment`;
-CREATE TABLE IF NOT EXISTS `%TABLE_PREFIX%canned_attachment` (
-  `canned_id` int(10) unsigned NOT NULL,
-  `file_id` int(10) unsigned NOT NULL,
-  PRIMARY KEY  (`canned_id`,`file_id`)
-) DEFAULT CHARSET=utf8;
-
-INSERT INTO `%TABLE_PREFIX%canned_attachment` (`canned_id`, `file_id`)
-  VALUES (LAST_INSERT_ID(), (SELECT `id` FROM `%TABLE_PREFIX%file` ORDER BY `id` LIMIT 1));
+INSERT INTO `%TABLE_PREFIX%attachment` (`object_id`, `type`, `file_id`)
+  VALUES (LAST_INSERT_ID(), 'C', (SELECT `id` FROM `%TABLE_PREFIX%file` ORDER BY `id` LIMIT 1));
 
 DROP TABLE IF EXISTS `%TABLE_PREFIX%session`;
 CREATE TABLE `%TABLE_PREFIX%session` (

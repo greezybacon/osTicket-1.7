@@ -192,9 +192,10 @@ $(document).ready(function(){
                     //Canned response.
                     if(canned.response) {
                         if($('#append',fObj).is(':checked') &&  $('#response',fObj).val())
-                            $('#response',fObj).val($('#response',fObj).val()+"\n\n"+canned.response+"\n");
+                            $('#response',fObj).redactor('insertHtml', canned.response);
                         else
-                            $('#response',fObj).val(canned.response);
+                            $('#response',fObj).redactor('set', canned.response);
+                        $('#response',fObj).redactor('observeImages');
                     }
                     //Canned attachments.
                     if(canned.files && $('.canned_attachments',fObj).length) {
@@ -249,10 +250,11 @@ $(document).ready(function(){
     /* Get config settings from the backend */
     jQuery.fn.exists = function() { return this.length>0; };
 
-    var getConfig = (function() {
+    // NOTE: getConfig should be global
+    getConfig = (function() {
         var dfd = $.Deferred();
         return function() {
-            if (!dfd.isResolved())
+            if (dfd.state() != 'resolved')
                 $.ajax({
                     url: "ajax.php/config/scp",
                     dataType: 'json',
@@ -285,17 +287,14 @@ $(document).ready(function(){
         showOn:'both'
      });
 
-    /* NicEdit richtext init */
-    var rtes = $('.richtext');
-    var rtes_count = rtes.length;
-    for(i=0;i<rtes_count;i++) {
-        var initial_value = rtes[i].value;
-        rtes[i].id = 'rte-'+i;
-        new nicEditor({iconsPath:'images/nicEditorIcons.gif'}).panelInstance('rte-'+i);
-        if(initial_value=='') {
-            nicEditors.findEditor('rte-'+i).setContent('');
+    /* Redactor richtext init */
+    getConfig().then(function(c) {
+        if (c.html_thread) {
+            $('.richtext:not(.allow-images)').redactor({
+                'paragraphy': false,
+            });
         }
-    }
+    });
 
     /* Typeahead tickets lookup */
     $('#basic-ticket-search').typeahead({

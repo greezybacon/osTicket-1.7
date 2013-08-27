@@ -278,8 +278,8 @@ jQuery(function($) {
         $('#toggle_ticket_thread').removeClass('active');
         $('#toggle_notes').addClass('active');
     } else {
-        $('#response_options ul li:first a').addClass('active');
-        $('#response_options '+$('#response_options ul li:first a').attr('href')).show();
+        $('#response_options ul.tabs li:first a').addClass('active');
+        $('#response_options '+$('#response_options ul.tabs li:first a').attr('href')).show();
     }
 
     $('#reply_tab').click(function() {
@@ -292,9 +292,9 @@ jQuery(function($) {
         }
      });
 
-    $('#response_options ul li a').click(function(e) {
+    $('#response_options ul.tabs li a').click(function(e) {
         e.preventDefault();
-        $('#response_options ul li a').removeClass('active');
+        $('#response_options ul.tabs li a').removeClass('active');
         $(this).addClass('active');
         $('#response_options form').hide();
         //window.location.hash = this.hash;
@@ -362,3 +362,28 @@ jQuery(function($) {
     });
 
 });
+
+showImagesInline = function(urls, thread_id) {
+    var selector = (thread_id == undefined)
+        ? '.thread-body img[src^=cid]'
+        : '.thread-body#thread-id-'+thread_id+' img[src^=cid]';
+    $(selector).each(function(i, el) {
+        var hash = $(el).attr('src').slice(4),
+            info = urls[hash],
+            e = $(el);
+        if (info && e.attr('src') == 'cid:' + hash) {
+            e.attr('src', info.url);
+            // Add a hover effect with the filename
+            var caption = $('<div class="image-hover">')
+                .hover(
+                    function() { $(this).find('.caption').slideDown(250); },
+                    function() { $(this).find('.caption').slideUp(250); }
+                ).append($('<div class="caption">')
+                    .append('<span class="filename">'+info.filename+'</span>')
+                    .append('<a href="'+info.download_url+'" class="action-button"><i class="icon-download-alt"></i> Download</a>')
+                )
+            caption.appendTo(e.parent())
+            e.appendTo(caption);
+        }
+    });
+}

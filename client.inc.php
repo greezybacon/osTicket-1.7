@@ -15,7 +15,7 @@
 **********************************************************************/
 if(!strcasecmp(basename($_SERVER['SCRIPT_NAME']),basename(__FILE__))) die('kwaheri rafiki!');
 
-$thisdir=str_replace('\\\\', '/', realpath(dirname(__FILE__))).'/'; 
+$thisdir=str_replace('\\\\', '/', realpath(dirname(__FILE__))).'/';
 if(!file_exists($thisdir.'main.inc.php')) die('Fatal Error.');
 
 require_once($thisdir.'main.inc.php');
@@ -62,6 +62,9 @@ if ($_POST  && !$ost->checkCSRFToken()) {
     //just incase redirect fails
     die('Action denied (400)!');
 }
+
+//Add token to the header - used on ajax calls [DO NOT CHANGE THE NAME]
+$ost->addExtraHeader('<meta name="csrf_token" content="'.$ost->getCSRFToken().'" />');
 
 /* Client specific defaults */
 define('PAGE_LIMIT', DEFAULT_PAGE_LIMIT);

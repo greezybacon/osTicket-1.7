@@ -36,8 +36,8 @@ class KbaseAjaxAPI extends AjaxController {
             case 'json':
                 $resp['id'] = $canned->getId();
                 $resp['ticket'] = $canned->getTitle();
-                $resp['response'] = $ticket?$ticket->replaceVars($canned->getResponse()):$canned->getResponse();
-                $resp['files'] = $canned->getAttachments();
+                $resp['response'] = $ticket?$ticket->replaceVars($canned->getResponseWithImages()):$canned->getResponse();
+                $resp['files'] = $canned->attachments->getAll();
 
 
                 $response = $this->json_encode($resp);
@@ -62,12 +62,13 @@ class KbaseAjaxAPI extends AjaxController {
         //TODO: $fag->getJSON() for json format. (nolint)
         $resp = sprintf(
                 '<div style="width:650px;">
-                 <strong>%s</strong><p>%s</p>
+                 <strong>%s</strong><div class="thread-body">%s</div>
+                 <div class="clear"></div>
                  <div class="faded">Last updated %s</div>
                  <hr>
                  <a href="faq.php?id=%d">View</a> | <a href="faq.php?id=%d">Attachments (%s)</a>',
                 $faq->getQuestion(),
-                Format::safe_html($faq->getAnswer()),
+                $faq->getAnswer(),
                 Format::db_daydatetime($faq->getUpdateDate()),
                 $faq->getId(),
                 $faq->getId(),

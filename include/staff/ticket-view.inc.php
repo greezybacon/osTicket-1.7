@@ -341,22 +341,18 @@ if(!$cfg->showNotesInline()) { ?>
                 <th width="440"><span><?php echo Format::htmlchars($entry['title']); ?></span></th>
                 <th width="300" class="tmeta"><?php echo Format::htmlchars($entry['poster']); ?></th>
             </tr>
-            <tr><td colspan="3" class="ticket-thread-body" id="thread-id-<?php
+            <tr><td colspan="3" class="thread-body" id="thread-id-<?php
                 echo $entry['id']; ?>"><?php
                 echo Format::display($entry['body']); ?></td></tr>
             <?php
             if($entry['attachments']
                     && ($tentry=$ticket->getThreadEntry($entry['id']))
+                    && ($urls = $tentry->getAttachmentUrls())
                     && ($links=$tentry->getAttachmentsLinks())) {?>
             <tr>
                 <script type="text/javascript">
-                    var urls=<?php echo json_encode($tentry->getAttachmentUrls()); ?>;
-                    $.each(urls, function(hash, url) {
-                        $('.ticket-thread-body img[src^=cid]').each(function(i, el) {
-                            if ($(el).attr('src') == 'cid:' + hash)
-                                $(el).attr('src', url);
-                        });
-                    });
+                    $(function() { showImagesInline(<?php echo
+                        JsonDataEncoder::encode($urls); ?>); });
                 </script>
                 <td class="info" colspan=3><?php echo $links; ?></td>
             </tr>
@@ -381,7 +377,7 @@ if(!$cfg->showNotesInline()) { ?>
 <?php } ?>
 
 <div id="response_options">
-    <ul>
+    <ul class="tabs">
         <?php
         if($thisstaff->canPostReply()) { ?>
         <li><a id="reply_tab" href="#reply">Post Reply</a></li>
@@ -446,10 +442,24 @@ if(!$cfg->showNotesInline()) { ?>
                         </select>
                         &nbsp;&nbsp;&nbsp;
                         <label><input type='checkbox' value='1' name="append" id="append" checked="checked"> Append</label>
+                        <span class="pull-right draft-saved faded"
+                            style="margin-right:1em;display:none;"
+                            ><span style="position:relative;top:0.17em">Draft Saved</span><a
+                            title="Delete Draft" class="action-button" style="vertical-align:top"
+                            onclick="javascript:
+                                $(this).closest('form').find('textarea#response')
+                                    .redactor('deleteDraft');
+                                return false;"
+                            ><i class="icon-trash"></i></a>
+                        </span>
                         <br>
                     <?php
                     }?>
-                    <textarea name="response" id="response" cols="50" rows="9" wrap="soft"><?php echo $info['response']; ?></textarea>
+                    <input type="hidden" name="draft_id" value=""/>
+                    <textarea name="response" id="response" cols="50"
+                        data-thread-type="response" rows="9" wrap="soft"
+                        class="richtext allow-images"><?php
+                        echo $info['response']; ?></textarea>
                 </td>
             </tr>
             <?php
@@ -520,7 +530,9 @@ if(!$cfg->showNotesInline()) { ?>
         </table>
         <p  style="padding-left:165px;">
             <input class="btn_sm" type="submit" value="Post Reply">
-            <input class="btn_sm" type="reset" value="Reset">
+            <input class="btn_sm" type="reset" value="Reset" onclick="javascript:
+                $(this.form).find('textarea#response')
+                    .redactor('set','');" />
         </p>
     </form>
     <?php
@@ -545,8 +557,16 @@ if(!$cfg->showNotesInline()) { ?>
                 </td>
                 <td width="765">
                     <div><span class="faded">Note details</span>&nbsp;
-                        <span class="error">*&nbsp;<?php echo $errors['note']; ?></span></div>
-                    <textarea name="note" id="internal_note" cols="80" rows="9" wrap="soft"><?php echo $info['note']; ?></textarea><br>
+                        <span class="error">*&nbsp;<?php echo $errors['note']; ?></span>
+                        <span class="pull-right draft-saved faded"
+                            style="margin-right:1em;display:none;"
+                            >Draft Saved</span>
+                    </div>
+                    <input type="hidden" name="draft_id" value=""/>
+                    <textarea name="note" id="internal_note" cols="80"
+                        rows="9" wrap="soft" data-thread-type="note"
+                        class="richtext allow-images"><?php echo $info['note'];
+                        ?></textarea><br>
                     <div>
                         <span class="faded">Note title - summary of the note (optional)</span>&nbsp;
                         <span class="error"&nbsp;<?php echo $errors['title']; ?></span>
@@ -626,7 +646,9 @@ if(!$cfg->showNotesInline()) { ?>
 
        <p  style="padding-left:165px;">
            <input class="btn_sm" type="submit" value="Post Note">
-           <input class="btn_sm" type="reset" value="Reset">
+           <input class="btn_sm" type="reset" value="Reset" onclick="javascript:
+                $(this.form).find('textarea#internal_note')
+                    .redactor('set','');" />
        </p>
    </form>
     <?php
@@ -676,7 +698,8 @@ if(!$cfg->showNotesInline()) { ?>
                     <span class="faded">Enter reasons for the transfer.</span>
                     <span class="error">*&nbsp;<?php echo $errors['transfer_comments']; ?></span><br>
                     <textarea name="transfer_comments" id="transfer_comments"
-                        cols="80" rows="7" wrap="soft"><?php echo $info['transfer_comments']; ?></textarea>
+                        class="richtext" cols="80" rows="7" wrap="soft"><?php
+                        echo $info['transfer_comments']; ?></textarea>
                 </td>
             </tr>
         </table>
@@ -763,7 +786,8 @@ if(!$cfg->showNotesInline()) { ?>
                 <td width="765">
                     <span class="faded">Enter reasons for the assignment or instructions for assignee.</span>
                     <span class="error">*&nbsp;<?php echo $errors['assign_comments']; ?></span><br>
-                    <textarea name="assign_comments" id="assign_comments" cols="80" rows="7" wrap="soft"><?php echo $info['assign_comments']; ?></textarea>
+                    <textarea name="assign_comments" id="assign_comments" cols="80" rows="7" wrap="soft"
+                        class="richtext"><?php echo $info['assign_comments']; ?></textarea>
                 </td>
             </tr>
         </table>
@@ -826,7 +850,8 @@ if(!$cfg->showNotesInline()) { ?>
         <input type="hidden" name="do" value="<?php echo $ticket->isClosed()?'reopen':'close'; ?>">
         <fieldset>
             <em>Reasons for status change (internal note). Optional but highly recommended.</em><br>
-            <textarea name="ticket_status_notes" id="ticket_status_notes" cols="50" rows="5" wrap="soft"><?php echo $info['ticket_status_notes']; ?></textarea>
+            <textarea name="ticket_status_notes" id="ticket_status_notes" cols="50" rows="5" wrap="soft"
+                class="richtext"><?php echo $info['ticket_status_notes']; ?></textarea>
         </fieldset>
         <hr style="margin-top:1em"/>
         <p class="full-width">
@@ -890,3 +915,21 @@ if(!$cfg->showNotesInline()) { ?>
     <div class="clear"></div>
 </div>
 <script type="text/javascript" src="js/ticket.js"></script>
+<script type="text/javascript">
+$(function() {
+    var ticket_id = <?php echo $ticket->getId(); ?>;
+    getConfig().then(function(c) {
+        if (c.html_thread) {
+            $('.richtext.allow-images').each(function(i, editor) {
+                var element = $(editor);
+                element.redactor({
+                    'plugins': ['draft','fontfamily','fontcolor'],
+                    'draft_namespace': 'ticket.' + ticket_id,
+                    'draft_object_id': element.data('threadType'),
+                    'paragraphy': false,
+                });
+            });
+        }
+    });
+});
+</script>

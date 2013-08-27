@@ -19,6 +19,7 @@ require_once(INCLUDE_DIR.'class.ticket.php');
 require_once(INCLUDE_DIR.'class.dept.php');
 require_once(INCLUDE_DIR.'class.filter.php');
 require_once(INCLUDE_DIR.'class.canned.php');
+require_once(INCLUDE_DIR.'class.json.php');
 
 
 $page='';
@@ -69,6 +70,11 @@ if($_POST && !$errors):
                 $ticket->reload();
                 if($ticket->isClosed() && $wasOpen)
                     $ticket=null;
+
+                // Cleanup drafts for the ticket. If not closed, only clean
+                // for this staff. Else clean all drafts for the ticket.
+                Draft::deleteForNamespace('ticket.' . $ticket->getId() . '%',
+                    $ticket->isClosed() ? false : $thisstaff->getId());
 
             } elseif(!$errors['err']) {
                 $errors['err']='Unable to post the reply. Correct the errors below and try again!';
@@ -170,6 +176,11 @@ if($_POST && !$errors):
                 $msg='Internal note posted successfully';
                 if($wasOpen && $ticket->isClosed())
                     $ticket = null; //Going back to main listing.
+
+                // Cleanup drafts for the ticket. If not closed, only clean
+                // for this staff. Else clean all drafts for the ticket.
+                Draft::deleteForTicket($ticket->getId(),
+                    $ticket->isClosed() ? false : $thisstaff->getId());
 
             } else {
 

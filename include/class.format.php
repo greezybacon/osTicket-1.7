@@ -126,16 +126,24 @@ class Format {
                 'balance' => 1, //balance and close unclosed tags.
                 'comment' => 1, //Remove html comments (OUTLOOK LOVE THEM)
                 'tidy' => -1, // Clean extra whitspace
-                'schemes' => 'href: aim, feed, file, ftp, gopher, http, https, irc, mailto, news, nntp, sftp, ssh, telnet; *:file, http, https; src: cid'
+                'schemes' => 'href: aim, feed, file, ftp, gopher, http, https, irc, mailto, news, nntp, sftp, ssh, telnet; *:file, http, https; src: cid, http, https'
                 );
 
         return Format::html($html, $config);
+    }
+
+    function localizeInlineImages($text) {
+        // Change image.php urls back to content-id's
+        return preg_replace('/image\\.php\\?h=(\\w{32})\\w{32}/',
+            'cid:$1', $text);
     }
 
     function sanitize($text, $striptags= true) {
 
         //balance and neutralize unsafe tags.
         $text = Format::safe_html($text);
+
+        $text = self::localizeInlineImages($text);
 
         //If requested - strip tags with decoding disabled.
         return $striptags?Format::striptags($text, false):$text;
@@ -203,7 +211,7 @@ class Format {
 
         $token = $ost->getLinkToken();
         //Not perfect but it works - please help improve it.
-        $text=preg_replace_callback('/(((f|ht){1}tp(s?):\/\/)[-a-zA-Z0-9@:%_\+.~#?&;\/\/=]+)/',
+        $text=preg_replace_callback('/(?<!")(((f|ht){1}tp(s?):\/\/)[-a-zA-Z0-9@:%_\+.~#?&;\/\/=]+)/',
                 create_function('$matches', # nolint
                     sprintf('return "<a href=\"l.php?url=".urlencode($matches[1])."&auth=%s\" target=\"_blank\">".$matches[1]."</a>";', # nolint
                         $token)),

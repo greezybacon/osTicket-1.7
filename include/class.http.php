@@ -14,7 +14,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 class Http {
-    
+
     function header_code_verbose($code) {
         switch($code):
         case 200: return '200 OK';
@@ -29,9 +29,9 @@ class Http {
         default:  return '500 Internal Server Error';
         endswitch;
     }
-    
+
     function response($code,$content,$contentType='text/html',$charset='UTF-8') {
-		
+
         header('HTTP/1.1 '.Http::header_code_verbose($code));
 		header('Status: '.Http::header_code_verbose($code)."\r\n");
 		header("Connection: Close\r\n");
@@ -40,7 +40,7 @@ class Http {
        	print $content;
         exit;
     }
-	
+
 	function redirect($url,$delay=0,$msg='') {
 
         if(strstr($_SERVER['SERVER_SOFTWARE'], 'IIS')){

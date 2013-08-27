@@ -257,6 +257,10 @@ class EmailTemplateGroup {
         if(db_query($sql) && ($num=db_affected_rows())) {
             //isInuse check is enough - but it doesn't hurt make sure deleted tpl is not in-use.
             db_query('UPDATE '.DEPT_TABLE.' SET tpl_id=0 WHERE tpl_id='.db_input($this->getId()));
+            // Drop attachments (images)
+            db_query('DELETE a.* FROM '.ATTACHMENT_TABLE.' a
+                JOIN '.EMAIL_TEMPLATE_TABLE.' t  ON (a.object_id=t.id AND a.type=\'T\')
+                WHERE t.tpl_id='.db_input($this->getId()));
             db_query('DELETE FROM '.EMAIL_TEMPLATE_TABLE
                 .' WHERE tpl_id='.db_input($this->getId()));
         }
@@ -362,9 +366,9 @@ class EmailTemplate {
         if(!($res=db_query($sql))|| !db_num_rows($res))
             return false;
 
-
         $this->ht=db_fetch_array($res);
         $this->id=$this->ht['id'];
+        $this->attachments = new GenericAttachments($this->id, 'T');
 
         return true;
     }
@@ -393,6 +397,14 @@ class EmailTemplate {
         return $this->ht['body'];
     }
 
+    function getBodyWithImages() {
+        return preg_replace_callback('/cid:(\\w{32})/', function($match) {
+            $hash = $match[1];
+            if (!($file = AttachmentFile::lookup($hash)))
+                return $match[0];
+            return 'image.php?h='.$file->getDownloadHash();
+        }, $this->getBody());
+    }
     function getCodeName() {
         return $this->ht['code_name'];
     }
@@ -438,6 +450,15 @@ class EmailTemplate {
 
         if ($errors)
             return false;
+
+        // Inline images (attached to the draft)
+        $vars['body'] = Format::sanitize($vars['body'], false);
+        if (isset($vars['draft_id']) && $vars['draft_id']) {
+            if ($draft = Draft::lookup($vars['draft_id'])) {
+                $this->attachments->deleteInlines();
+                $this->attachments->upload($draft->getAttachmentIds($vars['body']), true);
+            }
+        }
 
         if ($id) {
             $sql='UPDATE '.EMAIL_TEMPLATE_TABLE.' SET updated=NOW() '
