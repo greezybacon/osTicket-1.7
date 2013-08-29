@@ -195,7 +195,7 @@ class FAQ {
     function getAttachmentsLinks($separator=' ',$target='') {
 
         $str='';
-        if(($attachments=$this->attachments->getAll())) {
+        if(($attachments=$this->attachments->getSeparates())) {
             foreach($attachments as $attachment ) {
             /* The h key must match validation in file.php */
             $hash=$attachment['hash'].md5($attachment['id'].session_id().$attachment['hash']);

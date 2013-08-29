@@ -27,10 +27,10 @@ class AttachmentFile {
         if(!$id && !($id=$this->getId()))
             return false;
 
-        $sql='SELECT id, type, size, name, hash, f.created, '
-            .' count(DISTINCT c.canned_id) as canned, count(DISTINCT t.ticket_id) as tickets '
+        $sql='SELECT id, f.type, size, name, hash, f.created, '
+            .' count(DISTINCT a.object_id) as canned, count(DISTINCT t.ticket_id) as tickets '
             .' FROM '.FILE_TABLE.' f '
-            .' LEFT JOIN '.CANNED_ATTACHMENT_TABLE.' c ON(c.file_id=f.id) '
+            .' LEFT JOIN '.ATTACHMENT_TABLE.' a ON(a.file_id=f.id) '
             .' LEFT JOIN '.TICKET_ATTACHMENT_TABLE.' t ON(t.file_id=f.id) '
             .' WHERE f.id='.db_input($id)
             .' GROUP BY f.id';

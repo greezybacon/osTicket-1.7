@@ -19,13 +19,15 @@ class Http {
         switch($code):
         case 200: return '200 OK';
         case 201: return '201 Created';
-        case 204: return '204 NoContent';
+        case 204: return '204 No Content';
+        case 205: return '205 Reset Content';
         case 400: return '400 Bad Request';
         case 401: return '401 Unauthorized';
         case 403: return '403 Forbidden';
         case 404: return '404 Not Found';
         case 405: return '405 Method Not Allowed';
         case 416: return '416 Requested Range Not Satisfiable';
+        case 422: return '422 Unprocessable Entity';
         default:  return '500 Internal Server Error';
         endswitch;
     }

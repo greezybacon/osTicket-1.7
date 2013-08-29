@@ -36,8 +36,10 @@ class KbaseAjaxAPI extends AjaxController {
             case 'json':
                 $resp['id'] = $canned->getId();
                 $resp['ticket'] = $canned->getTitle();
-                $resp['response'] = $ticket?$ticket->replaceVars($canned->getResponseWithImages()):$canned->getResponse();
-                $resp['files'] = $canned->attachments->getAll();
+                $resp['response'] = $ticket
+                    ? $ticket->replaceVars($canned->getResponseWithImages())
+                    : $canned->getResponseWithImages();
+                $resp['files'] = $canned->attachments->getSeparates();
 
 
                 $response = $this->json_encode($resp);

@@ -169,10 +169,7 @@ class GenericAttachments {
             .' WHERE object_id='.db_input($this->getId())
             .'   AND `type`='.db_input($this->getType())
             .'   AND file_id='.db_input($file_id);
-        if(db_query($sql) && db_affected_rows()) {
-            $deleted = AttachmentFile::deleteOrphans();
-        }
-        return ($deleted > 0);
+        return db_query($sql) && db_affected_rows() > 0;
     }
 
     function deleteAll($inline_only=false){
@@ -182,10 +179,7 @@ class GenericAttachments {
             .'   AND `type`='.db_input($this->getType());
         if ($inline_only)
             $sql .= ' AND inline = 1';
-        if(db_query($sql) && db_affected_rows()) {
-            $deleted = AttachmentFile::deleteOrphans();
-        }
-        return $deleted;
+        return db_query($sql) && db_affected_rows() > 0;
     }
 
     function deleteInlines() {

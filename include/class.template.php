@@ -431,6 +431,14 @@ class EmailTemplate {
 
         $this->reload();
 
+        // Inline images (attached to the draft)
+        if (isset($vars['draft_id']) && $vars['draft_id']) {
+            if ($draft = Draft::lookup($vars['draft_id'])) {
+                $this->attachments->deleteInlines();
+                $this->attachments->upload($draft->getAttachmentIds($this->getBody()), true);
+            }
+        }
+
         return true;
     }
 
@@ -445,20 +453,13 @@ class EmailTemplate {
             if (!$vars['tpl_id'])
                 $errors['tpl_id']='Template group required';
             if (!$vars['code_name'])
-                $errprs['code_name']='Code name required';
+                $errors['code_name']='Code name required';
         }
 
         if ($errors)
             return false;
 
-        // Inline images (attached to the draft)
         $vars['body'] = Format::sanitize($vars['body'], false);
-        if (isset($vars['draft_id']) && $vars['draft_id']) {
-            if ($draft = Draft::lookup($vars['draft_id'])) {
-                $this->attachments->deleteInlines();
-                $this->attachments->upload($draft->getAttachmentIds($vars['body']), true);
-            }
-        }
 
         if ($id) {
             $sql='UPDATE '.EMAIL_TEMPLATE_TABLE.' SET updated=NOW() '
@@ -484,7 +485,14 @@ class EmailTemplate {
     }
 
     function add($vars, &$errors) {
-        return self::lookup(self::create($vars, $errors));
+        $inst = self::lookup(self::create($vars, $errors));
+
+        // Inline images (attached to the draft)
+        if (isset($vars['draft_id']) && $vars['draft_id'])
+            if ($draft = Draft::lookup($vars['draft_id']))
+                $inst->attachments->upload($draft->getAttachmentIds($inst->getBody()), true);
+
+        return $inst;
     }
 
     function lookupByName($tpl_id, $name, $group=null) {

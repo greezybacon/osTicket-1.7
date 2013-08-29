@@ -194,7 +194,11 @@ class HtmlBlockElement extends HtmlInlineElement {
 
     function render($width, $options) {
         $options['wordwrap'] = true;
+        if (!isset($options['trim']))
+            $options['trim'] = true;
         $output = parent::render($width, $options);
+        if ($options['trim'])
+            $output = trim($output);
         if (!strlen(trim($output)))
             return "";
         if ($options['wordwrap'])
@@ -255,6 +259,7 @@ class HtmlBlockquoteElement extends HtmlBlockElement {
 
 class HtmlCiteElement extends HtmlBlockElement {
     function render($width, $options) {
+        $options['trim'] = false;
         $lines = explode("\n", ltrim(parent::render($width-3, $options)));
         $lines[0] = "-- " . $lines[0];
         // Right justification
@@ -300,6 +305,7 @@ class HtmlListElement extends HtmlBlockElement {
 
     function render($width, $options) {
         $options['marker'] = $this->marker;
+        $options['trim'] = false;
         return parent::render($width, $options);
     }
 

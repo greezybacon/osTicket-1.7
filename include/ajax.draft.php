@@ -7,7 +7,8 @@ require_once(INCLUDE_DIR.'class.draft.php');
 class DraftAjaxAPI extends AjaxController {
 
     function _createDraft($vars) {
-        foreach (array('response', 'note', 'answer', 'body', 'message') as $field) {
+        foreach (array('response', 'note', 'answer', 'body', 'message',
+                'issue') as $field) {
             if (isset($_POST[$field])) {
                 $vars['body'] = urldecode($_POST[$field]);
                 break;
@@ -36,7 +37,7 @@ class DraftAjaxAPI extends AjaxController {
 
     function _getDraft($id) {
         if (!($draft = Draft::lookup($id)))
-            Http::response(404, "Draft not found");
+            Http::response(205, "Draft not found. Create one first");
 
         $body = preg_replace_callback('/cid:(\\w{32})/', function($match) {
             $hash = $match[1];
@@ -52,7 +53,8 @@ class DraftAjaxAPI extends AjaxController {
     }
 
     function _updateDraft($draft) {
-        foreach (array('response', 'note', 'answer', 'body', 'message') as $field) {
+        foreach (array('response', 'note', 'answer', 'body', 'message',
+                'issue') as $field) {
             if (isset($_POST[$field])) {
                 $body = urldecode($_POST[$field]);
                 break;
@@ -113,13 +115,13 @@ class DraftAjaxAPI extends AjaxController {
         if ($thisclient) {
             if (!($id = Draft::findByNamespaceAndStaff($namespace,
                     $thisclient->getId())))
-                Http::response(404, "Draft not found");
+                Http::response(205, "Draft not found. Create one first");
         }
         else {
             if (substr($namespace, -12) != substr(session_id(), -12))
                 Http::response(404, "Draft not found");
             elseif (!($id = Draft::findByNamespaceAndStaff($namespace, 0)))
-                Http::response(404, "Draft not found");
+                Http::response(205, "Draft not found. Create one first");
         }
 
         return self::_getDraft($id);
@@ -129,7 +131,7 @@ class DraftAjaxAPI extends AjaxController {
         global $thisclient;
 
         if (!($draft = Draft::lookup($id)))
-            Http::response(404, "Draft not found");
+            Http::response(205, "Draft not found. Create one first");
         // Check the owning client-id (for logged-in users), and the
         // session_id() for others
         elseif ($thisclient) {
@@ -148,7 +150,7 @@ class DraftAjaxAPI extends AjaxController {
         global $thisclient;
 
         if (!($draft = Draft::lookup($id)))
-            Http::response(404, "Draft not found");
+            Http::response(205, "Draft not found. Create one first");
         elseif ($thisclient) {
             if ($draft->getStaffId() != $thisclient->getId())
                 Http::response(404, "Draft not found");
@@ -183,7 +185,7 @@ class DraftAjaxAPI extends AjaxController {
             Http::response(403, "Login required for draft creation");
         elseif (!($id = Draft::findByNamespaceAndStaff($namespace,
                 $thisstaff->getId())))
-            Http::response(404, "Draft not found");
+            Http::response(205, "Draft not found. Create one first");
 
         return self::_getDraft($id);
     }
@@ -191,8 +193,10 @@ class DraftAjaxAPI extends AjaxController {
     function updateDraft($id) {
         global $thisstaff;
 
-        if (!($draft = Draft::lookup($id)))
-            Http::response(404, "$id: Draft not found");
+        if (!$thisstaff)
+            Http::response(403, "Login required for image upload");
+        elseif (!($draft = Draft::lookup($id)))
+            Http::response(205, "Draft not found. Create one first");
         elseif ($draft->getStaffId() != $thisstaff->getId())
             Http::response(404, "Draft not found");
 
@@ -205,7 +209,7 @@ class DraftAjaxAPI extends AjaxController {
         if (!$thisstaff)
             Http::response(403, "Login required for image upload");
         elseif (!($draft = Draft::lookup($draft_id)))
-            Http::response(404, "Draft not found");
+            Http::response(205, "Draft not found. Create one first");
         elseif ($draft->getStaffId() != $thisstaff->getId())
             Http::response(404, "Draft not found");
 
@@ -218,7 +222,7 @@ class DraftAjaxAPI extends AjaxController {
         if (!$thisstaff)
             Http::response(403, "Login required for draft edits");
         elseif (!($draft = Draft::lookup($id)))
-            Http::response(404, "Draft not found");
+            Http::response(205, "Draft not found. Create one first");
         elseif ($draft->getStaffId() != $thisstaff->getId())
             Http::response(404, "Draft not found");
 
@@ -231,9 +235,9 @@ class DraftAjaxAPI extends AjaxController {
         if (!$thisstaff)
             Http::response(403, "Login required for file queries");
 
-        $sql = 'SELECT f.id, a.type FROM '.FILE_TABLE
-            .' f JOIN '.ATTACHMENT_TABLE.' a ON (a.file_id = f.id)
-            WHERE a.`type` IN (\'C\', \'F\', \'T\')
+        $sql = 'SELECT f.id, COALESCE(a.type, f.ft) FROM '.FILE_TABLE
+            .' f LEFT JOIN '.ATTACHMENT_TABLE.' a ON (a.file_id = f.id)
+            WHERE (a.`type` IN (\'C\', \'F\', \'T\') OR f.ft = \'L\')
                 AND f.`type` LIKE \'image/%\'';
         if (!($res = db_query($sql)))
             Http::response(500, 'Unable to lookup files');
@@ -243,6 +247,7 @@ class DraftAjaxAPI extends AjaxController {
             'C' => 'Canned Responses',
             'F' => 'FAQ Articles',
             'T' => 'Email Templates',
+            'L' => 'Logos',
         );
         while (list($id, $type) = db_fetch_row($res)) {
             $f = AttachmentFile::lookup($id);
@@ -250,6 +255,7 @@ class DraftAjaxAPI extends AjaxController {
             $files[] = array(
                 'thumb'=>$url.'&s=128',
                 'image'=>$url,
+                'title'=>$f->getName(),
                 'folder'=>$folders[$type]
             );
         }

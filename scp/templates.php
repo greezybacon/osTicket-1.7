@@ -29,11 +29,10 @@ if($_POST){
             if(!$template){
                 $errors['err']='Unknown or invalid template';
             }elseif($template->update($_POST,$errors)){
-                $template->reload();
                 $msg='Message template updated successfully';
                 // Drop drafts for this template for ALL users
                 Draft::deleteForNamespace('tpl.'.$template->getCodeName()
-                    .$template->getTplId());
+                    .'.'.$template->getTplId());
             }elseif(!$errors['err']){
                 $errors['err']='Error updating message template. Try again!';
             }

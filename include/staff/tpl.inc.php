@@ -59,7 +59,7 @@ $tpl=$msgtemplates[$info['tpl']];
     &nbsp;&nbsp;&nbsp;<font color="red"><?php echo $errors['tpl']; ?></font>
     </form>
 </div>
-<form action="templates.php?id=<?php echo $id; ?>" method="post" id="save">
+<form action="templates.php?id=<?php echo $id; ?>&amp;a=manage" method="post" id="save">
 <?php csrf_token(); ?>
 <?php foreach ($extras as $k=>$v) { ?>
     <input type="hidden" name="<?php echo $k; ?>" value="<?php echo $v; ?>" />

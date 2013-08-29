@@ -164,11 +164,9 @@
     define('PAGE_TABLE', TABLE_PREFIX.'page');
 
     define('FAQ_TABLE',TABLE_PREFIX.'faq');
-    define('FAQ_ATTACHMENT_TABLE',TABLE_PREFIX.'faq_attachment');
     define('FAQ_TOPIC_TABLE',TABLE_PREFIX.'faq_topic');
     define('FAQ_CATEGORY_TABLE',TABLE_PREFIX.'faq_category');
     define('CANNED_TABLE',TABLE_PREFIX.'canned_response');
-    define('CANNED_ATTACHMENT_TABLE',TABLE_PREFIX.'canned_attachment');
 
     define('TICKET_TABLE',TABLE_PREFIX.'ticket');
     define('TICKET_THREAD_TABLE',TABLE_PREFIX.'ticket_thread');
@@ -180,12 +178,10 @@
     define('TICKET_EMAIL_INFO_TABLE',TABLE_PREFIX.'ticket_email_info');
 
     define('DRAFT_TABLE',TABLE_PREFIX.'draft');
-    define('DRAFT_ATTACHMENT_TABLE',TABLE_PREFIX.'draft_attachment');
 
     define('EMAIL_TABLE',TABLE_PREFIX.'email');
     define('EMAIL_TEMPLATE_GRP_TABLE',TABLE_PREFIX.'email_template_group');
     define('EMAIL_TEMPLATE_TABLE',TABLE_PREFIX.'email_template');
-    define('TEMPLATE_ATTACHMENT_TABLE',TABLE_PREFIX.'email_template_attachment');
 
     define('ATTACHMENT_TABLE',TABLE_PREFIX.'attachment');
 

@@ -215,8 +215,23 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                     <em><strong>Subject</strong>: Issue summary </em> &nbsp;<font class="error">*&nbsp;<?php echo $errors['subject']; ?></font><br>
                     <input type="text" name="subject" size="60" value="<?php echo $info['subject']; ?>">
                 </div>
-                <div><em><strong>Issue</strong>: Details on the reason(s) for opening the ticket.</em> <font class="error">*&nbsp;<?php echo $errors['issue']; ?></font></div>
-                <textarea name="issue" cols="21" rows="8" style="width:80%;"><?php echo $info['issue']; ?></textarea>
+                <div style="margin-top:0.5em; margin-bottom:0.5em">
+                    <em><strong>Issue</strong>:
+                    Details on the reason(s) for opening the ticket.</em>
+                    <font class="error">*&nbsp;<?php echo $errors['issue']; ?></font>
+                    <span class="pull-right draft-saved faded"
+                        style="margin-right:1em;display:none;"
+                        ><span style="position:relative;top:0.17em">Draft Saved</span><a
+                        title="Delete Draft" class="action-button" style="vertical-align:top"
+                        onclick="javascript:
+                            $(this).closest('form').find('textarea[name=issue]')
+                                .redactor('deleteDraft');
+                            return false;"
+                        ><i class="icon-trash"></i></a>
+                    </span>
+                </div>
+                <textarea class="richtext allow-images" name="issue" cols="21" rows="8"
+                    style="width:80%;"><?php echo $info['issue']; ?></textarea>
             </td>
         </tr>
         <?php
@@ -248,7 +263,9 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 </div>
             <?php
             } ?>
-                <textarea name="response" id="response" cols="21" rows="8" style="width:80%;"><?php echo $info['response']; ?></textarea>
+                <textarea class="richtext" name="response" id="response"
+                    cols="21" rows="8" style="width:80%;"><?php echo $info['response'];
+                    ?></textarea>
                 <table border="0" cellspacing="0" cellpadding="2" width="100%">
                 <?php
                 if($cfg->allowAttachments()) { ?>
@@ -325,7 +342,21 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 </table>
 <p style="padding-left:250px;">
     <input type="submit" name="submit" value="Open">
-    <input type="reset"  name="reset"  value="Reset">
+    <input type="reset"  name="reset"  value="Reset" onclick="javascript:
+        $(this.form).find('textarea.richtext')
+            .redactor('set','');" />
     <input type="button" name="cancel" value="Cancel" onclick='window.location.href="tickets.php"'>
 </p>
 </form>
+<script type="text/javascript">
+$(function() {
+    getConfig().then(function(c) {
+        if (c.html_thread) {
+            $('.richtext.allow-images').redactor({
+                'plugins': ['draft','fontfamily','fontcolor'],
+                'draft_namespace': 'ticket.staff'
+            });
+        }
+    });
+});
+</script>

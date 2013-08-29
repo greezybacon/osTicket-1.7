@@ -22,11 +22,22 @@ INSERT INTO `%TABLE_PREFIX%attachment`
   SELECT `canned_id`, 'C', `file_id`, 0
   FROM `%TABLE_PREFIX%canned_attachment`;
 
+DROP TABLE `%TABLE_PREFIX%canned_attachment`;
+
 -- Migrate faq attachments
 INSERT INTO `%TABLE_PREFIX%attachment`
   (`object_id`, `type`, `file_id`, `inline`)
   SELECT `faq_id`, 'F', `file_id`, 0
   FROM `%TABLE_PREFIX%faq_attachment`;
+
+DROP TABLE `%TABLE_PREFIX%faq_attachment`;
+
+-- Migrate email templates to HTML
+UPDATE `%TABLE_PREFIX%email_template`
+  SET `body` = REPLACE('\n', '<br/>',
+    REPLACE('&', '&amp;',
+        REPLACE('<', '&lt;',
+            REPLACE('>', '%gt;', `body`))));
 
 -- Finished with patch
 UPDATE `%TABLE_PREFIX%config`

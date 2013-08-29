@@ -32,19 +32,19 @@ RedactorPlugins.draft = {
         var self = this;
         $.ajax(this.opts.autosave, {
             dataType: 'json',
-            success: function(json) {
-                self.draft_id = json.draft_id;
-                // Allow the operation to be undone
-                self.bufferSet();
-                // Relace the current content with the draft, sync, and make
-                // images editable
-                self.set(json.body);
-                self.observeImages();
-                self.setupDraftUpdate(json);
-                self.focus();
-            },
             statusCode: {
-                404: function() {
+                200: function(json) {
+                    self.draft_id = json.draft_id;
+                    // Allow the operation to be undone
+                    self.bufferSet();
+                    // Relace the current content with the draft, sync, and make
+                    // images editable
+                    self.set(json.body);
+                    self.observeImages();
+                    self.setupDraftUpdate(json);
+                    self.focus();
+                },
+                205: function() {
                     // Save empty draft immediately;
                     var ai = self.opts.autosaveInterval;
 
@@ -106,10 +106,18 @@ RedactorPlugins.draft = {
         $('img', this.$box).each(function(i, img) {
                 // TODO: Rewrite the entire <img> tag. Otherwise the @width
                 // and @height attributes will begin to accumulate
-            html = html.replace('src="'+$(img).attr('src'),
-                'width="'+img.clientWidth
-                +'" height="'+img.clientHeight
-                +'" src="'+$(img).attr('src'));
+            src_re = $(img).attr('src').replace('?','\\?');
+            html = html.replace(new RegExp(
+                '<img ([^>]*)src="'+src_re+'"([^>]*)>'),
+                function(i, a, b) {
+                    if (!img.clientWidth) return i;
+                    extra = a + ' ' + b;
+                    extra = extra.replace(/(?:width|height)="[^"]+"\s*/gi, '')
+                    extra = 'width="' + img.clientWidth
+                        + '" height="' + img.clientHeight + '" ' + extra.trim();
+                    return '<img src="' + $(img).attr('src') + '" ' + extra + '>';
+                }
+            );
         });
         return html;
     }
