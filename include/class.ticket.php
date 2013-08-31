@@ -1272,14 +1272,7 @@ class Ticket {
     function postMessage($vars, $origin='', $alerts=true) {
         global $cfg;
 
-        //Strip quoted reply...on emailed replies
-        if(!strcasecmp($origin, 'Email')
-                && $cfg->stripQuotedReply()
-                && ($tag=$cfg->getReplySeparator()) && strpos($vars['message'], $tag))
-            if(list($msg) = split($tag, $vars['message']))
-                $vars['message'] = $msg;
-
-        if($vars['ip'])
+        if(isset($vars['ip']))
             $vars['ip_address'] = $vars['ip'];
         elseif(!$vars['ip_address'] && $_SERVER['REMOTE_ADDR'])
             $vars['ip_address'] = $_SERVER['REMOTE_ADDR'];

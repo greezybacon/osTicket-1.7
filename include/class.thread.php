@@ -230,7 +230,7 @@ Class ThreadEntry {
         if(!$id && !($id=$this->getId()))
             return false;
 
-        $sql='SELECT thread.*, info.* '
+        $sql='SELECT thread.*, info.email_mid '
             .' ,count(DISTINCT attach.attach_id) as attachments '
             .' FROM '.TICKET_THREAD_TABLE.' thread '
             .' LEFT JOIN '.TICKET_EMAIL_INFO_TABLE.' info
@@ -544,12 +544,70 @@ Class ThreadEntry {
                 )?$e:null;
     }
 
+    /**
+     * Parameters:
+     * mailinfo (hash<String>) email header information. Must include keys
+     *  - "mid" => Message-Id header of incoming mail
+     *  - "in-reply-to" => Message-Id the email is a direct response to
+     *  - "references" => List of Message-Id's the email is in response
+     *  - "subject" => Find external ticket number in the subject line
+     */
+    function lookupByEmailHeaders($mailinfo) {
+        // Search for messages using the References header, then the
+        // in-reply-to header
+        $search = 'SELECT message_id FROM '.TICKET_EMAIL_INFO_TABLE
+               . ' WHERE mid=%s ORDER BY id DESC';
+
+        if ($id = db_result(db_query(
+                sprintf($search, db_input($mailinfo['mid'])))))
+            return ThreadEntry::lookup($id);
+
+        foreach (array('mid', 'in-reply-to', 'references') as $header) {
+            $matches = array();
+            if (!isset($mailinfo[$header]) || !$mailinfo[$header])
+                continue;
+            // Header may have multiple entries (usually separated by
+            // semi-colons (;))
+            elseif (!preg_match_all('<[^>@]+@[^>]+>', $mailinfo[$header],
+                        $matches))
+                continue;
+
+            foreach ($matches[0] as $mid) {
+                $res = db_query(sprintf($search, db_input($mid)));
+                while (list($id) = db_fetch_row($res)) {
+                    if ($t = ThreadEntry::lookup($id))
+                        return $t;
+                }
+            }
+        }
+
+        // Search for ticket by the [#123456] in the subject line
+        $subject = $mailinfo['subject'];
+        $match = array();
+        if ($subject && preg_match("/\[#([0-9]{1,10})\]/", $subject, $match))
+            // Return last message for the thread
+            return Message::lastByTicketId((int)$match[1]);
+
+        return null;
+    }
+
     //new entry ... we're trusting the caller to check validity of the data.
     function create($vars) {
 
         //Must have...
         if(!$vars['ticketId'] || !$vars['type'] || !in_array($vars['type'], array('M','R','N')))
             return false;
+
+        // Check if 'reply_to' is in the $vars as the previous ThreadEntry
+        // instance. If the body of the previous message is found in the new
+        // body, strip it out.
+        if (isset($vars['reply_to'])
+                && $vars['reply_to'] instanceof ThreadEntry) {
+            $vars['body'] = str_replace($vars['reply_to']->getBody(), '',
+                $vars['body']);
+            if (!isset($vars['pid']))
+                $vars['pid'] = $vars['reply_to']->getId();
+        }
 
         $sql=' INSERT INTO '.TICKET_THREAD_TABLE.' SET created=NOW() '
             .' ,thread_type='.db_input($vars['type'])
@@ -629,6 +687,17 @@ class Message extends ThreadEntry {
                 && ($m = new Message($id, $tid))
                 && $m->getId()==$id
                 )?$m:null;
+    }
+
+    function lastByExtTicketId($ticketId) {
+        $sql = 'SELECT thread.id FROM '.TICKET_THREAD_TABLE
+            .'thread JOIN '.TICKET_TABLE.' ticket ON (ticket.ticket_id = thread.ticket_id)
+                WHERE thread_type=\'M\' AND ticket.ticketID = '.db_input($ticketId)
+            .' ORDER BY thread.id DESC LIMIT 1';
+        if (($res = db_query($sql)) && (list($id) = db_fetch_row($res)))
+            return Message::lookup($id);
+        else
+            return null;
     }
 }
 
