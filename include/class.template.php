@@ -310,7 +310,7 @@ class EmailTemplateGroup {
         $sql=' updated=NOW() '
             .' ,name='.db_input($vars['name'])
             .' ,isactive='.db_input($vars['isactive'])
-            .' ,notes='.db_input($vars['notes']);
+            .' ,notes='.db_input(Format::sanitize($vars['notes']));
 
         if($id) {
             $sql='UPDATE '.EMAIL_TEMPLATE_GRP_TABLE.' SET '.$sql.' WHERE tpl_id='.db_input($id);

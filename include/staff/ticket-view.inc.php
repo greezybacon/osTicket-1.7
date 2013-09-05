@@ -698,7 +698,7 @@ if(!$cfg->showNotesInline()) { ?>
                     <span class="faded">Enter reasons for the transfer.</span>
                     <span class="error">*&nbsp;<?php echo $errors['transfer_comments']; ?></span><br>
                     <textarea name="transfer_comments" id="transfer_comments"
-                        class="richtext" cols="80" rows="7" wrap="soft"><?php
+                        class="richtext no-bar" cols="80" rows="7" wrap="soft"><?php
                         echo $info['transfer_comments']; ?></textarea>
                 </td>
             </tr>
@@ -787,7 +787,7 @@ if(!$cfg->showNotesInline()) { ?>
                     <span class="faded">Enter reasons for the assignment or instructions for assignee.</span>
                     <span class="error">*&nbsp;<?php echo $errors['assign_comments']; ?></span><br>
                     <textarea name="assign_comments" id="assign_comments" cols="80" rows="7" wrap="soft"
-                        class="richtext"><?php echo $info['assign_comments']; ?></textarea>
+                        class="richtext no-bar"><?php echo $info['assign_comments']; ?></textarea>
                 </td>
             </tr>
         </table>

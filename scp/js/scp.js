@@ -250,21 +250,6 @@ $(document).ready(function(){
     /* Get config settings from the backend */
     jQuery.fn.exists = function() { return this.length>0; };
 
-    // NOTE: getConfig should be global
-    getConfig = (function() {
-        var dfd = $.Deferred();
-        return function() {
-            if (dfd.state() != 'resolved')
-                $.ajax({
-                    url: "ajax.php/config/scp",
-                    dataType: 'json',
-                    success: function (json_config) {
-                        dfd.resolve(json_config);
-                    }
-                });
-            return dfd;
-        }
-    })();
     /* Multifile uploads */
     var elems = $('.multifile');
     if (elems.exists()) {
@@ -286,15 +271,6 @@ $(document).ready(function(){
         buttonImage: './images/cal.png',
         showOn:'both'
      });
-
-    /* Redactor richtext init */
-    getConfig().then(function(c) {
-        if (c.html_thread) {
-            $('.richtext:not(.allow-images)').redactor({
-                'paragraphy': false,
-            });
-        }
-    });
 
     /* Typeahead tickets lookup */
     $('#basic-ticket-search').typeahead({
@@ -433,3 +409,19 @@ $(document).ready(function(){
              });
     });
 });
+
+// NOTE: getConfig should be global
+getConfig = (function() {
+    var dfd = $.Deferred();
+    return function() {
+        if (dfd.state() != 'resolved')
+            $.ajax({
+                url: "ajax.php/config/scp",
+                dataType: 'json',
+                success: function (json_config) {
+                    dfd.resolve(json_config);
+                }
+            });
+        return dfd;
+    }
+})();

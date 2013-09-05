@@ -238,7 +238,7 @@ class Page {
             .', name='.db_input($vars['name'])
             .', body='.db_input(Format::safe_html($vars['body']))
             .', isactive='.db_input($vars['isactive'] ? 1 : 0)
-            .', notes='.db_input($vars['notes']);
+            .', notes='.db_input(Format::sanitize($vars['notes']));
 
         if($id) {
             $sql='UPDATE '.PAGE_TABLE.' SET '.$sql.' WHERE id='.db_input($id);

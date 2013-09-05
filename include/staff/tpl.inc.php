@@ -88,13 +88,11 @@ $tpl=$msgtemplates[$info['tpl']];
             <td colspan="2">
                 <div style="margin-bottom:0.5em;margin-top:0.5em">
                 <strong>Message Body:</strong> <em>Email message body.</em> <font class="error">*&nbsp;<?php echo $errors['body']; ?></font>
-                <span class="pull-right draft-saved faded"
-                    style="margin-right:1em;display:none;"
-                    >Draft Saved</span>
                 </div>
                 <input type="hidden" name="draft_id" value=""/>
                 <textarea name="body" cols="21" rows="16" style="width:98%;" wrap="soft"
-                    class="richtext allow-images"><?php echo $info['body']; ?></textarea>
+                    class="richtext allow-images" data-draft-namespace="tpl.<?php echo $selected; ?>"
+                    data-draft-object-id="<?php echo $tpl_id; ?>"><?php echo $info['body']; ?></textarea>
             </td>
         </tr>
     </tbody>

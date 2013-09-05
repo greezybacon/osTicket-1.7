@@ -122,3 +122,60 @@ RedactorPlugins.draft = {
         return html;
     }
 };
+
+/* Redactor richtext init */
+$(function() {
+    var redact = function(el) {
+        var el = $(el),
+            options = {
+                'air': el.hasClass('no-bar'),
+                'autoresize': !el.hasClass('no-bar'),
+                'plugins': ['fontcolor','fontfamily'],
+            };
+        if (el.hasClass('allow-images')) {
+            var reset = $('input[type=reset]', el.closest('form')),
+                draft_saved = $('<span>')
+                .addClass("pull-right draft-saved faded")
+                .css({'position':'relative','top':'-1.8em','right':'1em'})
+                .hide()
+                .append($('<span>')
+                    .css({'position':'relative', 'top':'0.17em'})
+                    .text('Draft Saved'));
+            el.closest('form').append($('<input type="hidden" name="draft_id"/>'));
+            if (reset)
+                reset.click(function() {
+                    el.redactor('set', '');
+                });
+            if (el.hasClass('draft-delete')) {
+                draft_saved.append($('<span>')
+                    .addClass('action-button')
+                    .click(function() {
+                        el.redactor('deleteDraft');
+                        return false;
+                    })
+                    .append($('<i>')
+                        .addClass('icon-trash')
+                    )
+                );
+            }
+            draft_saved.insertBefore(el);
+            options['plugins'].push('draft');
+            if (el.data('draftNamespace'))
+                options['draft_namespace'] = el.data('draftNamespace');
+            if (el.data('draftObjectId'))
+                options['draft_object_id'] = el.data('draftObjectId');
+        }
+        el.redactor(options);
+    }
+    $('.richtext').each(function(i,el) {
+        if ($(el).hasClass('ifhtml'))
+            // Check if html_thread is enabled first
+            getConfig().then(function(c) {
+                if (c.html_thread)
+                    redact(el);
+            });
+        else
+            // Make a rich text editor immediately
+            redact(el);
+    });
+});
