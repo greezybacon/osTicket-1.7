@@ -119,13 +119,11 @@ if($ticket->getThreadCount() && ($thread=$ticket->getClientThread())) {
                 }
                 ?>
                 <span id="msg"><em><?php echo $msg; ?> </em></span><font class="error">*&nbsp;<?php echo $errors['message']; ?></font>
-                <span class="pull-right draft-saved faded"
-                    style="margin-right:1em;display:none;"
-                    >Draft Saved</span>
                 <br/>
-                <input type="hidden" name="draft_id" value=""/>
                 <textarea name="message" id="message" cols="50" rows="9" wrap="soft"
-                    class="richtext allow-images"><?php echo $info['message']; ?></textarea>
+                    data-draft-namespace="ticket.client"
+                    data-draft-object-id="<?php echo $ticket->getExtId(); ?>"
+                    class="richtext ifhtml draft"><?php echo $info['message']; ?></textarea>
             </td>
         </tr>
         <?php
@@ -151,16 +149,3 @@ if($ticket->getThreadCount() && ($thread=$ticket->getClientThread())) {
         <input type="button" value="Cancel" onClick="history.go(-1)">
     </p>
 </form>
-<script type="text/javascript">
-$(function() {
-    getConfig().then(function(c) {
-        if (c.html_thread) {
-            $('.richtext.allow-images').redactor({
-                'plugins': ['draft','fontcolor','fontfamily'],
-                'draft_namespace': 'ticket.client',
-                'draft_object_id': <?php echo $ticket->getExtId(); ?>,
-            });
-        }
-    });
-});
-</script>

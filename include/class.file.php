@@ -256,11 +256,13 @@ class AttachmentFile {
 
         if(!$file['hash'])
             $file['hash']=MD5(MD5($file['data']).time());
+        if (is_callable($file['data']))
+            $file['data'] = $file['data']();
         if(!$file['size'])
             $file['size']=strlen($file['data']);
 
         $sql='INSERT INTO '.FILE_TABLE.' SET created=NOW() '
-            .',type='.db_input($file['type'])
+            .',type='.db_input(strtolower($file['type']))
             .',size='.db_input($file['size'])
             .',name='.db_input($file['name'])
             .',hash='.db_input($file['hash']);

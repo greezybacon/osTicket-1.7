@@ -19,7 +19,7 @@ if(!defined('INCLUDE_DIR')) die('!');
 class KbaseAjaxAPI extends AjaxController {
 
     function cannedResp($id, $format='') {
-        global $thisstaff, $_GET;
+        global $thisstaff, $cfg;
 
         include_once(INCLUDE_DIR.'class.canned.php');
 
@@ -41,14 +41,19 @@ class KbaseAjaxAPI extends AjaxController {
                     : $canned->getResponseWithImages();
                 $resp['files'] = $canned->attachments->getSeparates();
 
+                if (!$cfg->isHtmlThreadEnabled())
+                    $resp['response'] = convert_html_to_text($resp['response'], 90);
 
                 $response = $this->json_encode($resp);
                 break;
+
             case 'txt':
             default:
                 $response =$ticket?$ticket->replaceVars($canned->getResponse()):$canned->getResponse();
-        }
 
+                if (!$cfg->isHtmlThreadEnabled())
+                    $response = convert_html_to_text($response, 90);
+        }
 
         return $response;
     }

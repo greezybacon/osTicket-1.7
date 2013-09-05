@@ -35,8 +35,11 @@ if($_POST){
         $errors['message']='Message required';
 
     if(!$errors && $email){
-        if($email->send($_POST['email'],$_POST['subj'],$_POST['message']))
+        if($email->send($_POST['email'],$_POST['subj'],
+                Format::sanitize($_POST['message']))) {
             $msg='Test email sent successfully to '.Format::htmlchars($_POST['email']);
+            Draft::deleteForNamespace('email.diag');
+        }
         else
             $errors['err']='Error sending email - try again.';
     }elseif($errors['err']){
@@ -107,7 +110,7 @@ require(STAFFINC_DIR.'header.inc.php');
             <td colspan=2>
                 <div style="padding-top:0.5em;padding-bottom:0.5em">
                 <em><strong>Message</strong>: email message to send.</em>&nbsp;<span class="error">*&nbsp;<?php echo $errors['message']; ?></span></div>
-                <textarea class="richtext allow-images draft-delete" name="message" cols="21"
+                <textarea class="richtext draft draft-delete" name="message" cols="21"
                     data-draft-namespace="email.diag"
                     rows="10" style="width: 90%;"><?php echo $info['message']; ?></textarea>
             </td>

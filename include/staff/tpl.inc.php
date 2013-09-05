@@ -91,7 +91,7 @@ $tpl=$msgtemplates[$info['tpl']];
                 </div>
                 <input type="hidden" name="draft_id" value=""/>
                 <textarea name="body" cols="21" rows="16" style="width:98%;" wrap="soft"
-                    class="richtext allow-images" data-draft-namespace="tpl.<?php echo $selected; ?>"
+                    class="richtext draft" data-draft-namespace="tpl.<?php echo $selected; ?>"
                     data-draft-object-id="<?php echo $tpl_id; ?>"><?php echo $info['body']; ?></textarea>
             </td>
         </tr>
@@ -100,26 +100,8 @@ $tpl=$msgtemplates[$info['tpl']];
 <p style="padding-left:210px;">
     <input class="button" type="submit" name="submit" value="Save Changes">
     <input class="button" type="reset" name="reset" value="Reset Changes" onclick="javascript:
-        $(this.form).find('textarea.richtext')
-            .redactor('deleteDraft');
         location.reload();" />
     <input class="button" type="button" name="cancel" value="Cancel Changes"
         onclick='window.location.href="templates.php?tpl_id=<?php echo $tpl_id; ?>"'>
 </p>
 </form>
-<script type="text/javascript">
-$(function() {
-    getConfig().then(function(c) {
-        if (c.html_thread) {
-            $('.richtext.allow-images').each(function(i, editor) {
-                var element = $(editor);
-                element.redactor({
-                    'plugins': ['draft','fontcolor','fontfamily'],
-                    'draft_namespace': 'tpl.<?php echo $selected; ?>',
-                    'draft_object_id': <?php echo $tpl_id; ?>,
-                });
-            });
-        }
-    });
-});
-</script>

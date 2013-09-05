@@ -60,12 +60,7 @@ class FAQ {
     function getKeywords() { return $this->ht['keywords']; }
     function getQuestion() { return $this->ht['question']; }
     function getAnswer() {
-        return preg_replace_callback('/cid:(\\w{32})/', function($match) {
-            $hash = $match[1];
-            if (!($file = AttachmentFile::lookup($hash)))
-                return $match[0];
-            return 'image.php?h='.$file->getDownloadHash();
-        }, $this->ht['answer']);
+        return Format::viewableImages($this->ht['answer']);
     }
     function getNotes() { return $this->ht['notes']; }
     function getNumAttachments() { return $this->ht['attachments']; }

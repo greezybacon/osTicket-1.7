@@ -39,12 +39,7 @@ class DraftAjaxAPI extends AjaxController {
         if (!($draft = Draft::lookup($id)))
             Http::response(205, "Draft not found. Create one first");
 
-        $body = preg_replace_callback('/cid:(\\w{32})/', function($match) {
-            $hash = $match[1];
-            if (!($file = AttachmentFile::lookup($hash)))
-                return $match[0];
-            return 'image.php?h='.$file->getDownloadHash();
-        }, $draft->getBody());
+        $body = Format::viewableImages($draft->getBody());
 
         echo JsonDataEncoder::encode(array(
             'body' => $body,

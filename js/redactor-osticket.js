@@ -25,8 +25,6 @@ RedactorPlugins.draft = {
         this.opts.autosaveInterval = 4;
         this.opts.autosaveCallback = this.setupDraftUpdate;
         this.opts.initCallback = this.recoverDraft;
-        this.opts.imageGetJson = 'ajax.php/draft/images/browse';
-        this.opts.syncBeforeCallback = this.captureImageSizes;
     },
     recoverDraft: function() {
         var self = this;
@@ -35,14 +33,12 @@ RedactorPlugins.draft = {
             statusCode: {
                 200: function(json) {
                     self.draft_id = json.draft_id;
-                    // Allow the operation to be undone
-                    self.bufferSet();
                     // Relace the current content with the draft, sync, and make
                     // images editable
-                    self.set(json.body);
-                    self.observeImages();
                     self.setupDraftUpdate(json);
-                    self.focus();
+                    if (!json.body) return;
+                    self.set(json.body, false);
+                    self.observeStart();
                 },
                 205: function() {
                     // Save empty draft immediately;
@@ -102,7 +98,11 @@ RedactorPlugins.draft = {
         });
     },
 
-    captureImageSizes: function(html) {
+};
+
+/* Redactor richtext init */
+$(function() {
+    var captureImageSizes = function(html) {
         $('img', this.$box).each(function(i, img) {
                 // TODO: Rewrite the entire <img> tag. Otherwise the @width
                 // and @height attributes will begin to accumulate
@@ -121,18 +121,19 @@ RedactorPlugins.draft = {
         });
         return html;
     }
-};
-
-/* Redactor richtext init */
-$(function() {
     var redact = function(el) {
         var el = $(el),
             options = {
                 'air': el.hasClass('no-bar'),
+                'airButtons': ['formatting', '|', 'bold', 'italic', 'deleted', '|', 'unorderedlist', 'orderedlist', 'outdent', 'indent', '|', 'image'],
                 'autoresize': !el.hasClass('no-bar'),
+                'minHeight': 150,
+                'focus': false,
                 'plugins': ['fontcolor','fontfamily'],
+                'imageGetJson': 'ajax.php/draft/images/browse',
+                'syncBeforeCallback': captureImageSizes
             };
-        if (el.hasClass('allow-images')) {
+        if (el.hasClass('draft')) {
             var reset = $('input[type=reset]', el.closest('form')),
                 draft_saved = $('<span>')
                 .addClass("pull-right draft-saved faded")

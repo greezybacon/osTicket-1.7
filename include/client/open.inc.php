@@ -83,12 +83,11 @@ $info=($_POST && $errors)?Format::htmlchars($_POST):$info;
         <td class="required">Message:</td>
         <td>
             <div class="clear"><em>Please provide as much detail as possible so we can best assist you.</em> <font class="error">*&nbsp;<?php echo $errors['message']; ?></font>
-                <span class="pull-right draft-saved"
-                    style="margin-right:1em;display:none;"
-                    >Draft Saved</span>
                 </div>
-            <input type="hidden" name="draft_id" value=""/>
-            <textarea id="message" cols="60" rows="8" name="message" class="richtext allow-images"
+            <textarea id="message" cols="60" rows="8" name="message"
+                class="richtext ifhtml draft"
+                data-draft-namespace="ticket.client"
+                data-draft-object-id="<?php echo substr(session_id(), -12); ?>"
                 ><?php echo $info['message']; ?></textarea>
         </td>
     </tr>
@@ -152,16 +151,3 @@ $info=($_POST && $errors)?Format::htmlchars($_POST):$info;
         <input type="button" value="Cancel" onClick='window.location.href="index.php"'>
   </p>
 </form>
-<script type="text/javascript">
-$(function() {
-    getConfig().then(function(c) {
-        if (c.html_thread) {
-            $('.richtext.allow-images').redactor({
-                'plugins': ['draft','fontcolor','fontfamily'],
-                'draft_namespace': 'ticket.client',
-                'draft_object_id': '<?php echo substr(session_id(), -12); ?>',
-            });
-        }
-    });
-});
-</script>

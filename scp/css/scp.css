@@ -1192,10 +1192,16 @@ time {
     width:500px;
     height:250px;
     height:auto !important;
-    background:#fff;
-    border:1px solid #2a67ac;
+    background:#f8f8f8;
+    border:2px solid #2a67ac;
     display:none;
     z-index:1200;
+    box-shadow: 0 5px 60px #001;
+    border-radius: 5px;
+}
+
+.redactor_air {
+    z-index: 1201 !important;
 }
 
 .dialog#advanced-search {

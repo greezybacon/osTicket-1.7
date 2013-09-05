@@ -31,7 +31,7 @@ class Draft {
                 $body = $this->getBody();
             $body = Format::localizeInlineImages($body);
             $matches = array();
-            if (preg_match_all('/"cid:(\w{32})"/', $body, $matches)) {
+            if (preg_match_all('/"cid:([\\w.-]{32})"/', $body, $matches)) {
                 foreach ($matches[1] as $hash) {
                     if ($file_id = AttachmentFile::getIdByHash($hash))
                         $this->_attachments[] = $file_id;
@@ -50,7 +50,7 @@ class Draft {
      */
     function syncExistingAttachments() {
         $matches = array();
-        if (!preg_match_all('/"cid:(\w{32})"/', $this->getBody(), $matches))
+        if (!preg_match_all('/"cid:([\\w.-]{32})"/', $this->getBody(), $matches))
             return;
 
         // Purge current attachments

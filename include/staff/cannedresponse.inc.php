@@ -74,22 +74,11 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 <input type="text" size="70" name="title" value="<?php echo $info['title']; ?>">
                 <br><br><div style="margin-bottom:0.5em"><b>Canned Response</b> <font class="error">*&nbsp;<?php echo $errors['response']; ?></font>
                     &nbsp;&nbsp;&nbsp;(<a class="tip" href="ticket_variables">Supported Variables</a>)
-                    <span class="pull-right draft-saved faded"
-                        style="margin-right:1em;display:none;"
-                        ><span style="position:relative;top:0.17em">Draft Saved</span><?php
-                        if (!$canned) { ?><a
-                        title="Delete Draft" class="action-button" style="vertical-align:top"
-                        onclick="javascript:
-                            $(this).closest('form').find('textarea.richtext')
-                                .redactor('deleteDraft');
-                            return false;"
-                        ><i class="icon-trash"></i></a>
-                        <?php } ?>
-                    </span>
                     </div>
-                <input type="hidden" name="draft_id" value=""/>
-                <textarea name="response" cols="21" rows="12"
-                    style="width:98%;" class="richtext allow-images"><?php
+                <textarea name="response ifhtml draft draft-delete" cols="21" rows="12"
+                    data-draft-namespace="canned"
+                    data-draft-object-id="<?php if (isset($canned)) echo $canned->getId(); ?>"
+                    style="width:98%;" class="richtext draft"><?php
                         echo $info['response']; ?></textarea>
                 <br><br><div><b>Canned Attachments</b> (optional) <font class="error">&nbsp;<?php echo $errors['files']; ?></font></div>
                 <?php
@@ -122,7 +111,8 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
         </tr>
         <tr>
             <td colspan=2>
-                <textarea name="notes" cols="21" rows="8" style="width: 80%;"><?php echo $info['notes']; ?></textarea>
+                <textarea class="richtext no-bar" name="notes" cols="21"
+                    rows="8" style="width: 80%;"><?php echo $info['notes']; ?></textarea>
             </td>
         </tr>
     </tbody>
@@ -141,17 +131,3 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
     <input type="button" name="cancel" value="Cancel" onclick='window.location.href="canned.php"'>
 </p>
 </form>
-<script type="text/javascript">
-$(function() {
-    var canned_id = <?php echo isset($canned) ?  $canned->getId() : '0'; ?>;
-    getConfig().then(function(c) {
-        if (c.html_thread) {
-            $('.richtext.allow-images').redactor({
-                'plugins': ['draft','fontfamily','fontcolor'],
-                'draft_namespace': 'canned',
-                'draft_object_id': canned_id,
-            });
-        }
-    });
-});
-</script>

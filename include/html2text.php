@@ -38,10 +38,7 @@ function convert_html_to_text($html, $width=74) {
     else
         $output = $elements;
 
-    // remove leading and trailing whitespace
-    $output = trim($output);
-
-    return $output;
+    return trim($output);
 }
 
 /**
@@ -61,13 +58,11 @@ function fix_newlines($text) {
 }
 
 function identify_node($node) {
-    if ($node instanceof DOMText) {
-        return preg_replace("/\\s+/im", " ", $node->wholeText);
-    }
-    if ($node instanceof DOMDocumentType) {
+    if ($node instanceof DOMText)
+        return $node;
+    if ($node instanceof DOMDocumentType)
         // ignore
         return "";
-    }
 
     $name = strtolower($node->nodeName);
 
@@ -129,21 +124,17 @@ function identify_node($node) {
         case "img":
             return new HtmlImgElement($node);
 
+        case "pre":
+            return new HtmlPreElement($node);
+        case "code":
+            return new HtmlCodeElement($node);
+
         default:
             // print out contents of unknown tags
             if ($node->hasChildNodes() && $node->childNodes->length == 1)
                 return identify_node($node->childNodes->item(0));
 
             return new HtmlInlineElement($node);
-    }
-}
-
-class Html2TextException extends Exception {
-    var $more_info;
-
-    public function __construct($message = "", $more_info = "") {
-        parent::__construct($message);
-        $this->more_info = $more_info;
     }
 }
 
@@ -170,10 +161,18 @@ class HtmlInlineElement {
     function render($width, &$options) {
         $output = (isset($this->content)) ? $this->content : "";
         foreach ($this->children as $c) {
-            if (is_object($c))
+            if ($c instanceof DOMText) {
+                if (isset($options['preserve-whitespace']))
+                    $output .= $c->wholeText;
+                else
+                    $output .= preg_replace("/\\s+/im", " ", $c->wholeText);
+            }
+            elseif ($c instanceof HtmlInlineElement) {
                 $output .= $c->render($width, $options);
-            else
+            }
+            else {
                 $output .= $c;
+            }
         }
         return $output;
     }
@@ -245,8 +244,21 @@ class HtmlHrElement extends HtmlBlockElement {
 
 class HtmlHeadlineElement extends HtmlBlockElement {
     function render($width, $options) {
-        return parent::render($width, $options)
-            . str_repeat("-", $width) . "\n";
+        $headline = parent::render($width, $options);
+        $line = false;
+        switch ($this->node->nodeName) {
+            case 'h1':
+            case 'h2':
+                $line = '=';
+                break;
+            case 'h3':
+            case 'h4':
+                $line = '-';
+                break;
+        }
+        if ($line)
+            $headline .= str_repeat($line, strpos($headline, "\n", 1) - 1) . "\n";
+        return $headline;
     }
 }
 
@@ -338,6 +350,26 @@ class HtmlListItem extends HtmlBlockElement {
         $lines = explode("\n", trim(parent::render($width-strlen($prefix), $options)));
         $lines[0] = $prefix . $lines[0];
         return implode("\n".str_repeat(" ", strlen($prefix)), $lines)."\n";
+    }
+}
+
+class HtmlPreElement extends HtmlBlockElement {
+    function render($width, $options) {
+        $options['preserve-whitespace'] = true;
+        $content = explode("\n", trim(parent::render($width-4, $options)));
+        $output = ',-'.str_repeat('-', $width-4)."-.\n";
+        foreach ($content as $l)
+            $output .= '| '.str_pad($l, $width-4)." |\n";
+        $output .= '`-'.str_repeat('-', $width-4)."-'\n";
+        return $output;
+    }
+    function getMinWidth() { return parent::getMinWidth() + 4; }
+    function getWeight() { return parent::getWeight() + 4; }
+}
+
+class HtmlCodeElement extends HtmlInlineElement {
+    function render($width, $options) {
+        return '`'.parent::render($width-2, $options).'`';
     }
 }
 
@@ -488,6 +520,9 @@ class HtmlTable extends HtmlBlockElement {
                 unset($data);
                 $data = explode("\n", $cell->render($cwidth, $options));
                 $heights[$y] = max(count($data), $heights[$y]);
+                # Adjust the columns widths if the data is oversized
+                if ($cell->cols == 1)
+                    $widths[$x] = max($widths[$x], max(array_map('strlen', $data)));
                 $contents[$y][$i] = &$data;
                 $x += $cell->cols;
             }

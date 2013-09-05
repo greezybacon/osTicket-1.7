@@ -84,21 +84,11 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             <td colspan=2>
                 <div style="margin-bottom:0.5em;margin-top:0.5em">
                     <b>Answer</b>&nbsp;<font class="error">*&nbsp;<?php echo $errors['answer']; ?></font>
-                    <span class="pull-right draft-saved faded"
-                        style="margin-right:1em;display:none;"
-                        ><span style="position:relative;top:0.17em">Draft Saved</span><?php
-                        if (!$faq) { ?><a
-                        title="Delete Draft" class="action-button" style="vertical-align:top"
-                        onclick="javascript:
-                            $(this).closest('form').find('textarea.richtext')
-                                .redactor('deleteDraft');
-                            return false;"
-                        ><i class="icon-trash"></i></a>
-                        <?php } ?>
-                    </span>
                 </div>
-                <input type="hidden" name="draft_id" value=""/>
-                <textarea name="answer" cols="21" rows="12" style="width:98%;" class="richtext allow-images"
+                <textarea name="answer" cols="21" rows="12"
+                    style="width:98%;" class="richtext draft"
+                    data-draft-namespace="faq"
+                    data-draft-object-id="<?php if (isset($faq)) echo $faq->getId(); ?>"
                     ><?php echo $info['answer']; ?></textarea>
             </td>
         </tr>
@@ -168,13 +158,3 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
     <input type="button" name="cancel" value="Cancel" onclick='window.location.href="faq.php?<?php echo $qstr; ?>"'>
 </p>
 </form>
-<script type="text/javascript">
-$(function() {
-    var faq_id = <?php echo isset($faq) ?  $faq->getId() : '0'; ?>;
-    $('.richtext.allow-images').redactor({
-        'plugins': ['draft','fontfamily','fontcolor'],
-        'draft_namespace': 'faq',
-        'draft_object_id': faq_id,
-    });
-});
-</script>

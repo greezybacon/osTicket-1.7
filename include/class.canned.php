@@ -79,12 +79,7 @@ class Canned {
         return $this->ht['response'];
     }
     function getResponseWithImages() {
-        return preg_replace_callback('/cid:(\\w{32})/', function($match) {
-            $hash = $match[1];
-            if (!($file = AttachmentFile::lookup($hash)))
-                return $match[0];
-            return 'image.php?h='.$file->getDownloadHash();
-        }, $this->getResponse());
+        return Format::viewableImages($this->getResponse());
     }
 
     function getReply() {

@@ -740,10 +740,6 @@ class Ticket {
                 && $dept->autoRespONNewTicket()
                 &&  ($msg=$tpl->getAutoRespMsgTemplate())) {
 
-            $attachments = array_merge(
-                $message->getAttachments(),
-                $msg->attachments->getInlines()
-            );
             $msg = $this->replaceVars($msg->asArray(),
                     array('message' => $message,
                           'signature' => ($dept && $dept->isPublic())?$dept->getSignature():'')
@@ -753,7 +749,7 @@ class Ticket {
                 $msg['body'] ="\n$tag\n\n".$msg['body'];
 
             $email->sendAutoReply($this->getEmail(), $msg['subj'], $msg['body'],
-                $attachments, $options);
+                null, $options);
         }
 
         if(!($email=$cfg->getAlertEmail()))
@@ -764,10 +760,6 @@ class Ticket {
                 && $cfg->alertONNewTicket()
                 && ($msg=$tpl->getNewTicketAlertMsgTemplate())) {
 
-            $attachments = array_merge(
-                $message->getAttachments(),
-                $msg->attachments->getInlines()
-            );
             $msg = $this->replaceVars($msg->asArray(), array('message' => $message));
 
             $recipients=$sentlist=array();
@@ -792,7 +784,7 @@ class Ticket {
                 if(!is_object($staff) || !$staff->isAvailable() || in_array($staff->getEmail(), $sentlist)) continue;
                 $alert = str_replace('%{recipient}', $staff->getFirstName(), $msg['body']);
                 $email->sendAlert($staff->getEmail(), $msg['subj'], $alert,
-                    $attachments, $options);
+                    null, $options);
                 $sentlist[] = $staff->getEmail();
             }
 
@@ -822,12 +814,10 @@ class Ticket {
 
         if($tpl && ($msg=$tpl->getOverlimitMsgTemplate()) && $email) {
 
-            $attachments = $msg->attachments->getInlines();
             $msg = $this->replaceVars($msg->asArray(),
                         array('signature' => ($dept && $dept->isPublic())?$dept->getSignature():''));
 
-            $email->sendAutoReply($this->getEmail(), $msg['subj'], $msg['body'],
-                $attachments);
+            $email->sendAutoReply($this->getEmail(), $msg['subj'], $msg['body']);
         }
 
         $client= $this->getClient();
@@ -883,7 +873,6 @@ class Ticket {
         //If enabled...send confirmation to user. ( New Message AutoResponse)
         if($email && $tpl && ($msg=$tpl->getNewMessageAutorepMsgTemplate())) {
 
-            $attachments = $msg->attachments->getInlines();
             $msg = $this->replaceVars($msg->asArray(),
                             array('signature' => ($dept && $dept->isPublic())?$dept->getSignature():''));
 
@@ -895,7 +884,7 @@ class Ticket {
                 $message = $this->getLastMessage();
             $options = array('references' => $message->getEmailMessageId());
             $email->sendAutoReply($this->getEmail(), $msg['subj'], $msg['body'],
-                $attachments, $options);
+                null, $options);
         }
     }
 
@@ -944,7 +933,6 @@ class Ticket {
         //Get the message template
         if($email && $recipients && $tpl && ($msg=$tpl->getAssignedAlertMsgTemplate())) {
 
-            $attachments = $msg->attachments->getInlines();
             $msg = $this->replaceVars($msg->asArray(),
                         array('comments' => $comments,
                               'assignee' => $assignee,
@@ -958,7 +946,7 @@ class Ticket {
                 if(!is_object($staff) || !$staff->isAvailable() || in_array($staff->getEmail(), $sentlist)) continue;
                 $alert = str_replace('%{recipient}', $staff->getFirstName(), $msg['body']);
                 $email->sendAlert($staff->getEmail(), $msg['subj'], $alert,
-                    $attachments, $options);
+                    null, $options);
                 $sentlist[] = $staff->getEmail();
             }
         }
@@ -988,7 +976,6 @@ class Ticket {
         //Get the message template
         if($tpl && ($msg=$tpl->getOverdueAlertMsgTemplate()) && $email) {
 
-            $attachments = $msg->attachments->getInlines();
             $msg = $this->replaceVars($msg->asArray(),
                 array('comments' => $comments));
 
@@ -1014,7 +1001,7 @@ class Ticket {
                 if(!is_object($staff) || !$staff->isAvailable() || in_array($staff->getEmail(), $sentlist)) continue;
                 $alert = str_replace("%{recipient}", $staff->getFirstName(), $msg['body']);
                 $email->sendAlert($staff->getEmail(), $msg['subj'], $alert,
-                    $attachments);
+                    null);
                 $sentlist[] = $staff->getEmail();
             }
 
@@ -1185,7 +1172,6 @@ class Ticket {
          //Get the message template
          if($tpl && ($msg=$tpl->getTransferAlertMsgTemplate()) && $email) {
 
-            $attachments = $msg->attachments->getInlines();
             $msg = $this->replaceVars($msg->asArray(),
                 array('comments' => $comments, 'staff' => $thisstaff));
             //recipients
@@ -1212,7 +1198,7 @@ class Ticket {
                 if(!is_object($staff) || !$staff->isAvailable() || in_array($staff->getEmail(), $sentlist)) continue;
                 $alert = str_replace('%{recipient}', $staff->getFirstName(), $msg['body']);
                 $email->sendAlert($staff->getEmail(), $msg['subj'], $alert,
-                    $attachments, $options);
+                    null, $options);
                 $sentlist[] = $staff->getEmail();
             }
          }
@@ -1338,7 +1324,7 @@ class Ticket {
         //If enabled...send alert to staff (New Message Alert)
         if($cfg->alertONNewMessage() && $tpl && $email && ($msg=$tpl->getNewMessageAlertMsgTemplate())) {
 
-            $attachments = $msg->attachments->getInlines();
+            $attachments = $message->getAttachments();
             $msg = $this->replaceVars($msg->asArray(), array('message' => $message));
 
             //Build list of recipients and fire the alerts.
@@ -1409,7 +1395,6 @@ class Ticket {
                 $signature='';
 
             $attachments =($cfg->emailAttachments() && $files)?$response->getAttachments():array();
-            $attachments = array_merge($attachments, $msg->attachments->getInlines());
 
             $msg = $this->replaceVars($msg->asArray(),
                 array('response' => $response, 'signature' => $signature));
@@ -1468,7 +1453,6 @@ class Ticket {
 
             //Set attachments if emailing.
             $attachments = $cfg->emailAttachments()?$response->getAttachments():array();
-            $attachments = array_merge($attachments, $msg->attachments->getInlines());
 
             $msg = $this->replaceVars($msg->asArray(),
                     array('response' => $response, 'signature' => $signature, 'staff' => $thisstaff));
@@ -1570,7 +1554,6 @@ class Ticket {
         if($tpl && ($msg=$tpl->getNoteAlertMsgTemplate()) && $email) {
 
             $attachments = $note->getAttachments();
-            $attachments = array_merge($attachments, $msg->attachments->getInlines());
 
             $msg = $this->replaceVars($msg->asArray(),
                 array('note' => $note));
@@ -2163,7 +2146,6 @@ class Ticket {
                 $signature='';
 
             $attachments =($cfg->emailAttachments() && $response)?$response->getAttachments():array();
-            $attachments = array_merge($attachments, $msg->attachments->getInlines());
 
             $msg = $ticket->replaceVars($msg->asArray(),
                     array('message' => $message, 'signature' => $signature));

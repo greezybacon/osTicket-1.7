@@ -73,7 +73,7 @@ if($_POST && !$errors):
 
                 // Cleanup drafts for the ticket. If not closed, only clean
                 // for this staff. Else clean all drafts for the ticket.
-                Draft::deleteForNamespace('ticket.' . $ticket->getId() . '%',
+                Draft::deleteForNamespace('ticket.%.' . $ticket->getId(),
                     $ticket->isClosed() ? false : $thisstaff->getId());
 
             } elseif(!$errors['err']) {
@@ -462,7 +462,7 @@ if($_POST && !$errors):
                         $_REQUEST['a']=null;
                         if(!$ticket->checkStaffAccess($thisstaff) || $ticket->isClosed())
                             $ticket=null;
-                        Draft::deleteForNamespace('ticket.staff', $thisstaff->getId());
+                        Draft::deleteForNamespace('ticket.staff%', $thisstaff->getId());
                     } elseif(!$errors['err']) {
                         $errors['err']='Unable to create the ticket. Correct the error(s) and try again';
                     }

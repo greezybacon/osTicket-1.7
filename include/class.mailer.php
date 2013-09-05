@@ -142,10 +142,20 @@ class Mailer {
 
         $domain = 'local';
         if ($ost->getConfig()->isHtmlThreadEnabled()) {
-            // Add the domain to the content-id's
             // TODO: Lookup helpdesk domain
             $domain = substr(md5($ost->getConfig()->getURL()), -12);
-            $message = preg_replace('/cid:\\w{32}/', '$0@'.$domain, $message);
+            // Format content-ids with the domain, and add the inline images
+            // to the email attachment list
+            $message = preg_replace_callback('/cid:([\\w.-]{32})/',
+                function($match) use ($domain, $mime) {
+                    if (!($file = AttachmentFile::lookup($match[1])))
+                        return $match[0];
+                    $mime->addHTMLImage($file->getData(),
+                        $file->getType(), $file->getName(), false,
+                        $file->getHash().'@'.$domain);
+                    return $match[0].'@'.$domain;
+                }, $message);
+            // Add an HTML body
             $mime->setHTMLBody($message);
         }
         //XXX: Attachments
@@ -153,18 +163,8 @@ class Mailer {
             foreach($attachments as $attachment) {
                 if ($attachment['file_id']
                         && ($file=AttachmentFile::lookup($attachment['file_id']))) {
-                    // Try to locate the file-hash in the body of the
-                    // message referenced as a content-id
-                    if (strpos($message, sprintf('cid:%s@'.$domain,
-                            $file->getHash())) !== false)
-                        // Inline image
-                        $mime->addHTMLImage($file->getData(),
-                            $file->getType(), $file->getName(), false,
-                            $file->getHash().'@'.$domain);
-                    else
-                        // File attachment
-                        $mime->addAttachment($file->getData(),
-                            $file->getType(), $file->getName(),false);
+                    $mime->addAttachment($file->getData(),
+                        $file->getType(), $file->getName(),false);
                 }
                 elseif($attachment['file'] &&  file_exists($attachment['file']) && is_readable($attachment['file']))
                     $mime->addAttachment($attachment['file'],$attachment['type'],$attachment['name']);

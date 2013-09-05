@@ -50,7 +50,7 @@ if($_POST && $thisstaff->canManageCannedResponses()) {
                 // Attach inline attachments from the editor
                 if (isset($_POST['draft_id'])
                         && ($draft = Draft::lookup($_POST['draft_id']))) {
-                    $draft->attachments->deleteInlines();
+                    $canned->attachments->deleteInlines();
                     $canned->attachments->upload(
                         $draft->getAttachmentIds($_POST['response']),
                         true);
