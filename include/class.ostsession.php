@@ -37,10 +37,11 @@ class osTicketSession {
             );
             //Forced cleanup.
             register_shutdown_function('session_write_close');
+
+            //Start the session.
+            session_name('OSTSESSID');
+            session_start();
         }
-        //Start the session.
-        session_name('OSTSESSID');
-        session_start();
     }
 
     function regenerate_id(){
