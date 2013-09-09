@@ -126,7 +126,7 @@ class Format {
                 'balance' => 1, //balance and close unclosed tags.
                 'comment' => 1, //Remove html comments (OUTLOOK LOVE THEM)
                 'tidy' => -1, // Clean extra whitspace
-                'schemes' => 'href: aim, feed, file, ftp, gopher, http, https, irc, mailto, news, nntp, sftp, ssh, telnet; *:file, http, https; src: cid, http, https'
+                'schemes' => 'href: aim, feed, file, ftp, gopher, http, https, irc, mailto, news, nntp, sftp, ssh, telnet; *:file, http, https; src: cid, http, https, data'
                 );
 
         return Format::html($html, $config);
@@ -188,13 +188,21 @@ class Format {
             $text=Format::clickableurls($text);
 
         //Wrap long words...
-        $text=preg_replace_callback('/\w{75,}/',
-            create_function(
-                '$matches',                                     # nolint
-                'return wordwrap($matches[0],70,"\n",true);'),  # nolint
-            $text);
+        #$text=preg_replace_callback('/\w{75,}/',
+        #    create_function(
+        #        '$matches',                                     # nolint
+        #        'return wordwrap($matches[0],70,"\n",true);'),  # nolint
+        #    $text);
 
-        return $text;
+        // Make showing offsite images optional
+        return preg_replace_callback('/<img ([^>]*)(src="http.+)\/>/',
+            function($match) {
+                // Drop embedded classes -- they don't refer to ours
+                $match = preg_replace('/class="[^"]*"/', '', $match);
+                return sprintf('<div %s class="non-local-image" data-%s></div>',
+                    $match[1], $match[2]);
+            },
+            $text);
     }
 
     function striptags($var, $decode=true) {
@@ -241,12 +249,13 @@ class Format {
     }
 
     function viewableImages($html, $script='image.php') {
-        return preg_replace_callback('/cid:([\\w.-]{32})/',
+        return preg_replace_callback('/"cid:([\\w.-]{32})"/',
         function($match) use ($script) {
             $hash = $match[1];
             if (!($file = AttachmentFile::lookup($hash)))
                 return $match[0];
-            return $script.'?h='.$file->getDownloadHash();
+            return sprintf('"%s?h=%s" data-cid="%s"',
+                $script, $file->getDownloadHash(), $match[1]);
         }, $html);
     }
 

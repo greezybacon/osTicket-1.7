@@ -335,21 +335,27 @@ if(!$cfg->showNotesInline()) { ?>
            if ($entry['body'] == '-')
                $entry['body'] = '(EMPTY)';
            ?>
-        <table class="<?php echo $threadTypes[$entry['thread_type']]; ?>" cellspacing="0" cellpadding="1" width="940" border="0">
+        <table class="thread-entry <?php echo $threadTypes[$entry['thread_type']]; ?>" cellspacing="0" cellpadding="1" width="940" border="0">
             <tr>
-                <th width="200"><?php echo Format::db_datetime($entry['created']);?></th>
-                <th width="440"><span><?php echo Format::htmlchars($entry['title']); ?></span></th>
-                <th width="300" class="tmeta"><?php echo Format::htmlchars($entry['poster']); ?></th>
+                <th width="auto"><?php echo Format::db_datetime($entry['created']);?></th>
+                <th width="50%"><span><?php echo Format::htmlchars($entry['title']); ?></span></th>
+                <th width="auto" class="textra" style="text-align:right"></th>
+                <th width="auto" class="tmeta"><?php echo Format::htmlchars($entry['poster']); ?></th>
             </tr>
-            <tr><td colspan="3" class="thread-body" id="thread-id-<?php
+            <tr><td colspan="4" class="thread-body" id="thread-id-<?php
                 echo $entry['id']; ?>"><?php
                 echo Format::viewableImages(Format::display($entry['body'])); ?></td></tr>
             <?php
             if($entry['attachments']
                     && ($tentry=$ticket->getThreadEntry($entry['id']))
+                    && ($urls = $tentry->getAttachmentUrls())
                     && ($links=$tentry->getAttachmentsLinks())) {?>
             <tr>
-                <td class="info" colspan=3><?php echo $links; ?></td>
+                <td class="info" colspan="4"><?php echo $links; ?></td>
+                <script type="text/javascript">
+                    $(function() { showImagesInline(<?php echo
+                        JsonDataEncoder::encode($urls); ?>); });
+                </script>
             </tr>
             <?php
             }?>

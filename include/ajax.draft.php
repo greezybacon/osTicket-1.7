@@ -63,28 +63,41 @@ class DraftAjaxAPI extends AjaxController {
     }
 
     function _uploadInlineImage($draft) {
-        if (!isset($_FILES['file']))
+        if (!isset($_POST['data']) && !isset($_FILES['file']))
             Http::response(422, "File not included properly");
 
         # Fixup for expected multiple attachments
-        foreach ($_FILES['file'] as $k=>$v)
-            $_FILES['image'][$k] = array($v);
-        unset($_FILES['file']);
+        if (isset($_FILES['file'])) {
+            foreach ($_FILES['file'] as $k=>$v)
+                $_FILES['image'][$k] = array($v);
+            unset($_FILES['file']);
 
-        $file = AttachmentFile::format($_FILES['image'], true);
-        # TODO: Detect unacceptable attachment extension
-        # TODO: Verify content-type and check file-content to ensure image
-        if (!($ids = $draft->attachments->upload($file)))
-            return Http::response(500, $file['error']);
+            $file = AttachmentFile::format($_FILES['image'], true);
+            # TODO: Detect unacceptable attachment extension
+            # TODO: Verify content-type and check file-content to ensure image
+            if (!($ids = $draft->attachments->upload($file)))
+                return Http::response(500, $file['error']);
 
-        $id = $ids[0];
+            $id = $ids[0];
+        }
+        else {
+            $type = explode('/', $_POST['contentType']);
+            $info = array(
+                'data' => base64_decode($_POST['data']),
+                'name' => Misc::randCode(10).'.'.$type[1],
+                // TODO: Ensure _POST['contentType']
+                'type' => $_POST['contentType'],
+            );
+            // TODO: Detect unacceptable filetype
+            // TODO: Verify content-type and check file-content to ensure image
+            $id = $draft->attachments->save($info);
+        }
         if (!($f = AttachmentFile::lookup($id)))
             return Http::response(500, 'Unable to attach image');
 
         echo JsonDataEncoder::encode(array(
             'content_id' => 'cid:'.$f->getHash(),
-            'filelink' => sprintf('image.php?h=%s',
-                $f->getHash().strtolower(md5($id.session_id().$f->getHash())))
+            'filelink' => sprintf('image.php?h=%s', $f->getDownloadHash())
         ));
     }
 

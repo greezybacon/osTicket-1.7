@@ -470,8 +470,6 @@ Class ThreadEntry {
         $json = array();
         foreach ($this->getAttachments() as $att) {
             $json[$att['file_hash']] = array(
-                'url' => sprintf('%s?h=%s', $script,
-                    $att['file_hash'].strtolower(md5($att['file_id'].session_id().$att['file_hash']))),
                 'download_url' => sprintf('attachment.php?id=%d&h=%s', $att['attach_id'],
                     strtolower(md5($att['file_id'].session_id().$att['file_hash']))),
                 'filename' => $att['name'],

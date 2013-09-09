@@ -74,6 +74,7 @@ RedactorPlugins.draft = {
             .val(data.draft_id);
         this.draft_id = data.draft_id;
 
+        this.opts.clipboardUploadUrl =
         this.opts.imageUpload =
             'ajax.php/draft/'+data.draft_id+'/attach';
         this.opts.autosave = 'ajax.php/draft/'+data.draft_id;
@@ -104,24 +105,16 @@ RedactorPlugins.draft = {
 $(function() {
     var captureImageSizes = function(html) {
         $('img', this.$box).each(function(i, img) {
-                // TODO: Rewrite the entire <img> tag. Otherwise the @width
-                // and @height attributes will begin to accumulate
-            src_re = $(img).attr('src').replace('?','\\?');
-            html = html.replace(new RegExp(
-                '<img ([^>]*)src="'+src_re+'"([^>]*)>'),
-                function(i, a, b) {
-                    if (!img.clientWidth) return i;
-                    extra = a + ' ' + b;
-                    extra = extra.replace(/(?:width|height)="[^"]+"\s*/gi, '')
-                    extra = 'width="' + img.clientWidth
-                        + '" height="' + img.clientHeight + '" ' + extra.trim();
-                    return '<img src="' + $(img).attr('src') + '" ' + extra + '>';
-                }
-            );
+            // TODO: Rewrite the entire <img> tag. Otherwise the @width
+            // and @height attributes will begin to accumulate
+            before = img.outerHTML;
+            $(img).attr('width', img.clientWidth)
+                  .attr('height',img.clientHeight);
+            html = html.replace(before, img.outerHTML);
         });
         return html;
-    }
-    var redact = function(el) {
+    },
+    redact = function(el) {
         var el = $(el),
             options = {
                 'air': el.hasClass('no-bar'),

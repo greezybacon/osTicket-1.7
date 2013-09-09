@@ -361,18 +361,73 @@ jQuery(function($) {
         return false;
     });
 
+    var showNonLocalImage = function(div) {
+        var $div = $(div),
+            $img = $div.append($('<img>')
+              .attr('src', $div.data('src'))
+              .attr('alt', $div.attr('alt'))
+              .attr('title', $div.attr('title'))
+              .attr('style', $div.data('style'))
+            );
+        if ($div.attr('width'))
+            $img.width($div.attr('width'));
+        if ($div.attr('height'))
+            $img.height($div.attr('height'));
+    };
+
+    // Optionally show external images
+    $('.thread-entry').each(function(i, te) {
+        var extra = $(te).find('.textra'),
+            imgs = $(te).find('div.non-local-image[data-src]');
+        if (!extra) return;
+        if (!imgs.length) return;
+        extra.append($('<a>')
+          .addClass("action-button show-images")
+          .css({'font-weight':'normal'})
+          .text(' Show Images')
+          .click(function(ev) {
+            imgs.each(function(i, img) {
+              showNonLocalImage(img);
+              $(img).removeClass('non-local-image')
+                // Remove placeholder sizing
+                .width('auto')
+                .height('auto')
+                .removeAttr('width')
+                .removeAttr('height');
+              extra.find('.show-images').hide();
+            });
+          })
+          .prepend($('<i>')
+            .addClass('icon-picture')
+          )
+        );
+        imgs.each(function(i, img) {
+            var $img = $(img);
+            // Save a copy of the original styling
+            $img.data('style', $img.attr('style'));
+            // If the image has a 'height' attribute, use it, otherwise, use
+            // 40px
+            if ($img.attr('height'))
+                $img.height($img.attr('height'));
+            else
+                $img.height('40px');
+            // Ensure the image placeholder is visible width-wise
+            if (!$img.width())
+                $img.width('80px');
+            // TODO: Add a hover-button to show just one image
+        });
+    });
 });
 
 showImagesInline = function(urls, thread_id) {
     var selector = (thread_id == undefined)
-        ? '.thread-body img[src^=cid]'
-        : '.thread-body#thread-id-'+thread_id+' img[src^=cid]';
+        ? '.thread-body img[data-cid]'
+        : '.thread-body#thread-id-'+thread_id+' img[data-cid]';
     $(selector).each(function(i, el) {
-        var hash = $(el).attr('src').slice(4),
-            info = urls[hash],
+        var cid = $(el).data('cid'),
+            info = urls[cid],
             e = $(el);
-        if (info && e.attr('src') == 'cid:' + hash) {
-            e.attr('src', info.url);
+        if (info) {
             // Add a hover effect with the filename
             var caption = $('<div class="image-hover">')
                 .hover(

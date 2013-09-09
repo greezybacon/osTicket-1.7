@@ -394,7 +394,8 @@ class MailFetcher {
             //       <br/>
             $body=Format::htmlchars($body);
             if ($cfg->isHtmlThreadEnabled())
-                $body = "<pre>$body</pre>";
+                $body = wordwrap($body, 90);
+                $body = "<div style=\"white-space:pre\">$body</div>";
         }
         return $body;
     }

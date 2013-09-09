@@ -1435,8 +1435,23 @@ ul.progress li.no small {color:red;}
     overflow: hidden;
 }
 
-.thread-body img {
+.thread-body img:not(.optional) {
     width: auto;
     height: auto;
     max-width: 100%;
+}
+
+.non-local-image {
+    display: inline-block;
+}
+
+.non-local-image:after {
+    background: url(../images/ost-logo.png) center center no-repeat;
+    background-size: cover;
+    content: "";
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0.3;
 }

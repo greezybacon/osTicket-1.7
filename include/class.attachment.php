@@ -135,6 +135,21 @@ class GenericAttachments {
         return $i;
     }
 
+    function save($info, $inline=true) {
+        if (!($fileId = AttachmentFile::save($info)))
+            return false;
+
+        $sql ='INSERT INTO '.ATTACHMENT_TABLE
+            .' SET `type`='.db_input($this->getType())
+            .',object_id='.db_input($this->getId())
+            .',file_id='.db_input($fileId)
+            .',inline='.db_input($inline ? 1 : 0);
+        if (!db_query($sql) || !db_affected_rows())
+            return false;
+
+        return $fileId;
+    }
+
     function getInlines() { return $this->_getList(false, true); }
     function getSeparates() { return $this->_getList(true, false); }
     function getAll() { return $this->_getList(true, true); }

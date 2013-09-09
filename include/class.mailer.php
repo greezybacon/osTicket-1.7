@@ -146,7 +146,7 @@ class Mailer {
             $domain = substr(md5($ost->getConfig()->getURL()), -12);
             // Format content-ids with the domain, and add the inline images
             // to the email attachment list
-            $message = preg_replace_callback('/cid:([\\w.-]{32})/',
+            $message = preg_replace_callback('/cid:([\w.-]{32})/',
                 function($match) use ($domain, $mime) {
                     if (!($file = AttachmentFile::lookup($match[1])))
                         return $match[0];
@@ -163,6 +163,10 @@ class Mailer {
             foreach($attachments as $attachment) {
                 if ($attachment['file_id']
                         && ($file=AttachmentFile::lookup($attachment['file_id']))) {
+                    // Don't (re-)attach inline images
+                    if (preg_match('/src="cid:'.preg_quote($file->getHash()).'/',
+                            $message))
+                        continue;
                     $mime->addAttachment($file->getData(),
                         $file->getType(), $file->getName(),false);
                 }
