@@ -29,6 +29,9 @@ define('SCP_DIR',str_replace('//','/',dirname(__FILE__).'/'));
 define('OSTSCPINC',TRUE);
 define('OSTSTAFFINC',TRUE);
 
+if (!defined('ROOT_PATH'))
+    define('ROOT_PATH', '../');
+
 /* Tables used by staff only */
 define('KB_PREMADE_TABLE',TABLE_PREFIX.'kb_premade');
 

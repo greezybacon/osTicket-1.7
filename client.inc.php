@@ -26,6 +26,9 @@ if(!defined('INCLUDE_DIR')) die('Fatal error');
 define('CLIENTINC_DIR',INCLUDE_DIR.'client/');
 define('OSTCLIENTINC',TRUE);
 
+if (!defined('ROOT_PATH'))
+    define('ROOT_PATH', './');
+
 define('ASSETS_PATH',ROOT_PATH.'assets/default/');
 
 //Check the status of the HelpDesk.

@@ -21,6 +21,9 @@ if (!function_exists('noop')) { function noop() {} }
 session_set_save_handler('noop','noop','noop','noop','noop','noop');
 define('DISABLE_SESSION', true);
 
+if (!defined('ROOT_PATH'))
+    define('ROOT_PATH', '../');
+
 require_once('../main.inc.php');
 require_once(INCLUDE_DIR.'class.http.php');
 require_once(INCLUDE_DIR.'class.api.php');

@@ -73,7 +73,8 @@
     // Determine the path in the URI used as the base of the osTicket
     // installation
     if (!defined('ROOT_PATH'))
-        define('ROOT_PATH', Misc::siteRootPath(realpath(dirname(__file__))).'/'); //root path. Damn directories
+        if ($here = Misc::siteRootPath(realpath(dirname(__file__))))
+            define('ROOT_PATH', $here.'/'); //root path. Damn directories
 
     /*############## Do NOT monkey with anything else beyond this point UNLESS you really know what you are doing ##############*/
 
