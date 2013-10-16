@@ -18,7 +18,7 @@
 # Configuration: Enter the url and key. That is it.
 #  url => URL to api/tickets.email e.g http://yourdomain.com/support/api/tickets.email
 #  key => API's Key (see admin panel on how to generate a key)
-#   
+#
 
 $config = array(
         'url'=>'http://yourdomain.com/support/api/tickets.email',
@@ -35,25 +35,28 @@ $data=file_get_contents('php://stdin') or die('Error reading stdin. No message')
 set_time_limit(10);
 
 #curl post
-$ch = curl_init();        
-curl_setopt($ch, CURLOPT_URL, $config['url']);        
-curl_setopt($ch, CURLOPT_POST, 1);        
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $config['url']);
+curl_setopt($ch, CURLOPT_POST, 1);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 curl_setopt($ch, CURLOPT_USERAGENT, 'osTicket API Client v1.7');
 curl_setopt($ch, CURLOPT_HEADER, TRUE);
 curl_setopt($ch, CURLOPT_HTTPHEADER, array( 'Expect:', 'X-API-Key: '.$config['key']));
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, FALSE);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE); 
-$result=curl_exec($ch);        
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+$result=curl_exec($ch);
+$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 //Use postfix exit codes...expected by MTA.
 $code = 75;
-if(preg_match('/HTTP\/.* ([0-9]+) .*/', $result, $status)) {
-    switch($status[1]) {
-        case 201: //Success
-            $code = 0;
-            break;
+if ($status == 201) {
+    $code = 0;
+
+    # Ticket ID is available in {$response->content}
+}
+else {
+    switch($status) {
         case 400:
             $code = 66;
             break;
@@ -64,6 +67,7 @@ if(preg_match('/HTTP\/.* ([0-9]+) .*/', $result, $status)) {
         case 415:
         case 416:
         case 417:
+        case 422:
         case 501:
             $code = 65;
             break;
@@ -71,10 +75,16 @@ if(preg_match('/HTTP\/.* ([0-9]+) .*/', $result, $status)) {
             $code = 69;
             break;
         case 500: //Server error.
-        default: //Temp (unknown) failure - retry 
+        default: //Temp (unknown) failure - retry
             $code = 75;
     }
+
+    # Add in additional error handling code, such as saving a copy of the
+    # email somewhere or forwarding it to you or some mailing list. Note
+    # that error information should be available in {$response->content}
 }
+
+# NOTE: Any output written to stdout will be included in the bounce email
 
 exit($code);
 ?>

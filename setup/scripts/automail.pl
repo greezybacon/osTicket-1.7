@@ -29,7 +29,7 @@ while (<STDIN>) {
 use LWP::UserAgent;
 $ua = LWP::UserAgent->new;
 
-$ua->agent('osTicket API Client v1.7');
+$ua->agent('osTicket API Client');
 $ua->default_header('X-API-Key' => $config{'key'});
 $ua->timeout(10);
 
@@ -44,17 +44,30 @@ $response = $ua->request($req);
 # Add exit codes - depending on what your  MTA expects.
 # By default postfix exit codes are used - which are standard for MTAs.
 #
-    
+
 use Switch;
 
-$code = 75;    
-switch($response->code) {
-    case 201 { $code = 0; }
-    case 400 { $code = 66; }
-    case [401,403] { $code = 77; }
-    case [415,416,417,501] { $code = 65; }
-    case 503 { $code = 69 }
-    case 500 { $code = 75 }
+$code = 75;
+if ($response->is_success and $response->code == 201) {
+    $code = 0;
+
+    # Ticket ID is available in {$response->content}
 }
+else {
+    switch($response->code) {
+       case 400 { $code = 66; }
+       case [401,403] { $code = 77; }
+       case [415,416,422,417,501] { $code = 65; }
+       case 503 { $code = 69 }
+       case 500 { $code = 75 }
+    }
+
+    # Add in additional error handling code, such as saving a copy of the
+    # email somewhere or forwarding it to you or some mailing list. Note
+    # that error information should be available in {$response->content}
+}
+
+# NOTE: Any output written to stdout will be included in the bounce email
 #print "RESPONSE: ". $response->code. ">>>".$code;
+
 exit $code;
