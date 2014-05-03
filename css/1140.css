@@ -1,0 +1,229 @@
+/* CSS Resets */
+
+html,body,div,span,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,address,cite,code,del,dfn,em,img,ins,q,small,strong,sub,sup,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{border:0;margin:0;padding:0}article,aside,figure,figure img,figcaption,hgroup,footer,header,nav,section,video,object{display:block}a img{border:0}figure{position:relative}figure img{width:100%}
+
+
+/* ==================================================================================================================== */
+/* ! The 1140px Grid V2 by Andy Taylor \ http://cssgrid.net \ http://www.twitter.com/andytlr \ http://www.andytlr.com   */
+/* ==================================================================================================================== */
+
+.container {
+padding-left: 20px;
+padding-right: 20px;
+}
+
+.row {
+width: 100%;
+max-width: 1140px;
+min-width: 755px;
+margin: 0 auto;
+overflow: hidden;
+padding: 20px 0;
+}
+
+.onecol, .twocol, .threecol, .fourcol, .fivecol, .sixcol, .sevencol, .eightcol, .ninecol, .tencol, .elevencol {
+margin-right: 3.8%;
+float: left;
+min-height: 1px;
+}
+
+.row .onecol {
+width: 4.85%;
+}
+
+.row .twocol {
+width: 13.45%;
+}
+
+.row .threecol {
+width: 22.05%;
+}
+
+.row .fourcol {
+width: 30.75%;
+}
+
+.row .fivecol {
+width: 39.45%;
+}
+
+.row .sixcol {
+width: 48%;
+}
+
+.row .sevencol {
+width: 56.75%;
+}
+
+.row .eightcol {
+width: 65.4%;
+}
+
+.row .ninecol {
+width: 74.05%;
+}
+
+.row .tencol {
+width: 82.7%;
+}
+
+.row .elevencol {
+width: 91.35%;
+}
+
+.row .twelvecol {
+width: 100%;
+float: left;
+}
+
+.last {
+margin-right: 0px;
+}
+
+img, object, embed {
+max-width: 100%;
+}
+
+img {
+	height: auto;
+}	
+	
+	/* ============================= */
+/* ! Layout for mobile version   */
+/* ============================= */
+
+@media only screen and (min-width: 788px) {
+
+	#topNav {
+		display: block!important;
+	}
+	
+}
+
+@media only screen and (max-width: 787px) {
+
+	body {
+		-webkit-text-size-adjust: none;
+	}
+	
+	.row, body, .container {
+	width: 100%;
+	min-width: 0;
+	margin-left: 0px;
+	margin-right: 0px;
+	padding-left: 0px;
+	padding-right: 0px;
+	}
+	
+	.row .onecol, .row .twocol, .row .threecol, .row .fourcol, .row .fivecol, .row .sixcol, .row .sevencol, .row .eightcol, .row .ninecol, .row .tencol, .row .elevencol, .row .twelvecol, .row .topWrap {
+	width: auto;
+	float: none;
+	margin-left: 0px;
+	margin-right: 0px;
+	padding-left: 20px;
+	padding-right: 20px;
+	}
+	
+	.check {
+		clear: both;
+		padding-top: 12px;
+	}
+
+	#mobileNavLink {
+		display: block;
+		position: absolute;
+		top: 18px;
+		right: 20px;
+		width: 20px;
+		height: 13px;
+		text-indent: -9999px;
+		background: url(../images/mobile-nav.png) no-repeat 0 0;
+	}
+
+	#mainNav {
+		overflow: hidden;
+	}
+	
+		#mainNav li {
+			float: none;
+			display: block;
+			list-style: none;
+			line-height: 48px;
+			text-align: center;
+			border-bottom: 1px solid #e66565;
+		}
+		
+			#mainNav li a, #mainNav li.active a, body.home #topNav li a.home, body.open #topNav li a.new_ticket, body.tickets #topNav li a.ticket_status, body.tickets #topNav li a.my_tickets {
+				border: 0;
+				display: block;
+				color: #fff;
+				background: #d85656;
+				text-shadow: 1px 1px rgb(202,71,71);
+			}
+	
+	#topNav {
+		display: none;
+		position: absolute;
+		top: 48px;
+		left: 0;
+		margin: 0;
+		right: 0;
+		background: #d85656;
+		z-index: 2;
+		border-top: 1px solid #d35050;
+	}
+	
+	form#newTicket div {
+		width: 100%;
+	}
+	
+	form#newTicket input, form#newTicket select, form#newTicket textarea {
+		width: 95%;
+	}
+	
+	#reply form div {
+		width: 96%;
+	}
+			
+	#reply form textarea {
+		width: 100%;
+	}
+	
+	.ticket {
+		margin-bottom: 20px;
+	}
+	
+	.faqList {
+		clear: both;
+	}
+
+}
+
+@media only screen and (max-width: 597px) {
+		
+	.ticketButtons {
+		clear: both;
+		display: block;
+		float: left;
+		padding-top: 10px;
+		width: 100%;
+	}
+	
+}
+
+@media only screen and (max-width: 487px) {
+
+	form.status_form div {
+		width: 100%;
+	}
+	
+		form.status_form input {
+			width: 95%;
+		}
+		
+			form.status_form input.button {
+				width: auto;
+				margin-top: 10px;
+			}
+
+}

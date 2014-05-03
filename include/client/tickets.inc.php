@@ -89,91 +89,114 @@ if($search)
 $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting
 
 ?>
-<h1>My Tickets</h1>
-<br>
-<form action="tickets.php" method="get" id="ticketSearchForm">
-    <input type="hidden" name="a"  value="search">
-    <input type="text" name="q" size="20" value="<?php echo Format::htmlchars($_REQUEST['q']); ?>">
-    <select name="status">
-        <option value="">&mdash; Any Status &mdash;</option>
-        <option value="open"
-            <?php echo ($status=='open')?'selected="selected"':'';?>>Open (<?php echo $thisclient->getNumOpenTickets(); ?>)</option>
-        <?php
-        if($thisclient->getNumClosedTickets()) {
-            ?>
-        <option value="closed"
-            <?php echo ($status=='closed')?'selected="selected"':'';?>>Closed (<?php echo $thisclient->getNumClosedTickets(); ?>)</option>
-        <?php
-        } ?>
-    </select>
-    <input type="submit" value="Go">
-</form>
-<a class="refresh" href="<?php echo $_SERVER['REQUEST_URI']; ?>">Refresh</a>
-<table id="ticketTable" width="800" border="0" cellspacing="0" cellpadding="0">
-    <caption><?php echo $showing; ?></caption>
-    <thead>
-        <tr>
-            <th width="70" nowrap>
-                <a href="tickets.php?sort=ID&order=<?php echo $negorder; ?><?php echo $qstr; ?>" title="Sort By Ticket ID">Ticket #</a>
-            </th>
-            <th width="100">
-                <a href="tickets.php?sort=date&order=<?php echo $negorder; ?><?php echo $qstr; ?>" title="Sort By Date">Create Date</a>
-            </th>
-            <th width="80">
-                <a href="tickets.php?sort=status&order=<?php echo $negorder; ?><?php echo $qstr; ?>" title="Sort By Status">Status</a>
-            </th>
-            <th width="300">
-                <a href="tickets.php?sort=subj&order=<?php echo $negorder; ?><?php echo $qstr; ?>" title="Sort By Subject">Subject</a>
-            </th>
-            <th width="150">
-                <a href="tickets.php?sort=dept&order=<?php echo $negorder; ?><?php echo $qstr; ?>" title="Sort By Department">Department</a>
-            </th>
-            <th width="100">Phone Number</th>
-        </tr>
-    </thead>
-    <tbody>
-    <?php
-     if($res && ($num=db_num_rows($res))) {
-        $defaultDept=Dept::getDefaultDeptName(); //Default public dept.
-        while ($row = db_fetch_array($res)) {
-            $dept=$row['ispublic']?$row['dept_name']:$defaultDept;
-            $subject=Format::htmlchars(Format::truncate($row['subject'],40));
-            if($row['attachments'])
-                $subject.='  &nbsp;&nbsp;<span class="Icon file"></span>';
 
-            $ticketID=$row['ticketID'];
-            if($row['isanswered'] && !strcasecmp($row['status'],'open')) {
-                $subject="<b>$subject</b>";
-                $ticketID="<b>$ticketID</b>";
-            }
-            $phone=Format::phone($row['phone']);
-            if($row['phone_ext'])
-                $phone.=' '.$row['phone_ext'];
-            ?>
-            <tr id="<?php echo $row['ticketID']; ?>">
-                <td class="centered">
-                <a class="Icon <?php echo strtolower($row['source']); ?>Ticket" title="<?php echo $row['email']; ?>"
-                    href="tickets.php?id=<?php echo $row['ticketID']; ?>"><?php echo $ticketID; ?></a>
-                </td>
-                <td>&nbsp;<?php echo Format::db_date($row['created']); ?></td>
-                <td>&nbsp;<?php echo ucfirst($row['status']); ?></td>
-                <td>
-                    <a href="tickets.php?id=<?php echo $row['ticketID']; ?>"><?php echo $subject; ?></a>
-                </td>
-                <td>&nbsp;<?php echo Format::truncate($dept,30); ?></td>
-                <td><?php echo $phone; ?></td>
-            </tr>
-        <?php
-        }
+	<div>
+	    <?if($errors['err']) {?>
+	        <p align="center" id="errormessage"><?=$errors['err']?></p>
+	    <?}elseif($msg) {?>
+	        <p align="center" id="infomessage"><?=$msg?></p>
+	    <?}elseif($warn) {?>
+	        <p id="warnmessage"><?=$warn?></p>
+	    <?}?>
+	</div>
+	
+	<div class="container">
+		<div class="row">
+			<div class="topWrap">
+				<p class="headline"><?=$results_type?> <span class="showing"><?=$showing?></span></p>
+				<ul class="ticketButtons">
+					<li><i class="icon-book-open"></i><a href="view.php?status=open">View Open</a></li>
+					<li class="grey"><i class="icon-book-open"></i><a href="view.php?status=closed">View Closed</a></li>         
+			        <li><i class="icon-ccw"></i><a href="">Refresh</a></li>
+			    </ul>
+			</div>
+		</div>
+	</div>
+	
+	<div class="container greyBlock">
+		<div class="row">
 
-     } else {
-         echo '<tr><td colspan="7">Your query did not match any records</td></tr>';
-     }
-    ?>
-    </tbody>
-</table>
-<?php
-if($res && $num>0) {
-    echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
-}
-?>
+			<?php
+			 $class = "row1";
+		     if($res && ($num=db_num_rows($res))) {
+		     $i = 1;
+		        $defaultDept=Dept::getDefaultDeptName(); //Default public dept.
+		        while ($row = db_fetch_array($res)) {
+		        	$even = ($i%2 == 0) ? true : false;
+		            $dept=$row['ispublic']?$row['dept_name']:$defaultDept;
+		            $subject=Format::htmlchars(Format::truncate($row['subject'],40));
+		            if($row['attachments'])
+		                $subject.='  &nbsp;&nbsp;<span class="Icon file"></span>';
+		
+		            $ticketID=$row['ticketID'];
+		            if($row['isanswered'] && !strcasecmp($row['status'],'open')) {
+		                $subject="<b>$subject</b>";
+		                $ticketID="<b>$ticketID</b>";
+		            }
+		            $phone=Format::phone($row['phone']);
+		            if($row['phone_ext'])
+		                $phone.=' '.$row['phone_ext'];
+		            $i++;
+		            ?>
+			
+			
+			<div class="sixcol <?php if($even) { echo 'last'; } ?> <?=$class?>" id="<?php echo $row['ticketID']; ?>">
+            	<div class="ticket">
+            		
+		            		<?php if (strpos($row['status'],'closed') !== false) {
+							    $class = 'green';
+							} ?>
+							<span class="ticketStatus <?php echo $class; ?>"><?=ucfirst($row['status'])?></span>
+	            	<ul>
+	            		<li class="large">
+	            			<span class="heading">Ticket #:</span>
+	            			<a class="<?=strtolower($row['source'])?>Ticket" title="<?=$row['email']?>" href="view.php?id=<?php echo $row['ticketID']; ?>"><?php echo $ticketID; ?></a>
+	            		</li>
+	            		<li>
+		            		<span class="heading">Create Date:</span>
+		            		<?=Format::db_date($row['created'])?>
+	            		</li>
+	            		<li>
+		            		<span class="heading">Subject:</span>
+		            		<a href="tickets.php?id=<?php echo $row['ticketID']; ?>"><?php echo $subject; ?></a>
+		            		<?=$row['attachments']?"<span class='Icon file'>&nbsp;</span>":''?>
+	            		</li>
+	            		<li>
+		            		<span class="heading">Department:</span>
+		            		<?=Format::truncate($dept,30)?>
+	            		</li>
+	            		<li>
+		            		<span class="heading">Email:</span>
+		            		<?=Format::truncate($row['email'],40)?>
+	            		</li>
+	            	</ul>
+	            	<a href="tickets.php?id=<?php echo $row['ticketID']; ?>" class="button">View ticket</a>
+            	</div>
+            </div>
+            
+			<?php
+		        }
+		
+		     } else {
+		         echo '<tr><td colspan="7">Your query did not match any records</td></tr>';
+		     }
+		    ?>
+    
+		<?php
+		if($res && $num>0) {
+		    echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
+		}
+		?>
+		</div>
+	</div>
+
+
+    
+        
+    
+  
+            
+            
+            
+            
+        

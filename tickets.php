@@ -68,6 +68,7 @@ if($ticket && $ticket->checkClientAccess($thisclient)) {
     $nav->setActiveNav('new');
     $inc='open.inc.php';
 }
+$bodyclass = 'tickets';
 include(CLIENTINC_DIR.'header.inc.php');
 include(CLIENTINC_DIR.$inc);
 include(CLIENTINC_DIR.'footer.inc.php');

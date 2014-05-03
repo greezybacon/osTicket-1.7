@@ -1,13 +1,11 @@
-        </div>
-    </div>
-    <div id="footer">
-        <p>Copyright &copy; <?php echo date('Y'); ?> <a href="http://osticket.com" target="_blank" title="osTicket">osTicket.com</a> - All rights reserved.</p>
-        <a id="poweredBy" href="http://osticket.com" target="_blank">Powered by osTicket</a>
-    </div>
-<div id="overlay"></div>
-<div id="loading">
-    <h4>Please Wait!</h4>
-    <p>Please wait... it will take a second!</p>
-</div>    
+	<footer class="container">
+		<div class="row">
+			<div class="twelvecol last">
+				<p>osTicket 1.7 theme by <a href="http://jaypick.me" title="Jay Pick - Freelance Web Designer" target="_blank">Jay Pick</a>.</p>
+				<a href="http://osticket.com" class="osLogo"><img src="<?php echo ROOT_PATH; ?>images/osticket-powered.gif" alt="Powered by osTicket"></a>
+			</div>
+		</div>
+	</footer>
+
 </body>
-</html>  
+</html>
