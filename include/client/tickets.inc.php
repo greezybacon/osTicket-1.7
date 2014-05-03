@@ -91,19 +91,19 @@ $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting
 ?>
 
 	<div>
-	    <?if($errors['err']) {?>
-	        <p align="center" id="errormessage"><?=$errors['err']?></p>
-	    <?}elseif($msg) {?>
-	        <p align="center" id="infomessage"><?=$msg?></p>
-	    <?}elseif($warn) {?>
-	        <p id="warnmessage"><?=$warn?></p>
-	    <?}?>
+	    <?php if($errors['err']) { ?>
+	        <p align="center" id="errormessage"><?php echo $errors['err']; ?></p>
+	    <?php } elseif($msg) { ?>
+	        <p align="center" id="infomessage"><?php echo $msg; ?></p>
+	    <?php } elseif($warn) { ?>
+	        <p id="warnmessage"><?php echo $warn; ?></p>
+	    <?php } ?>
 	</div>
 	
 	<div class="container">
 		<div class="row">
 			<div class="topWrap">
-				<p class="headline"><?=$results_type?> <span class="showing"><?=$showing?></span></p>
+				<p class="headline"><?php echo $results_type; ?> <span class="showing"><?php echo $showing; ?></span></p>
 				<ul class="ticketButtons">
 					<li><i class="icon-book-open"></i><a href="view.php?status=open">View Open</a></li>
 					<li class="grey"><i class="icon-book-open"></i><a href="view.php?status=closed">View Closed</a></li>         
@@ -140,34 +140,34 @@ $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting
 		            ?>
 			
 			
-			<div class="sixcol <?php if($even) { echo 'last'; } ?> <?=$class?>" id="<?php echo $row['ticketID']; ?>">
+			<div class="sixcol <?php if($even) { echo 'last'; } ?> <?php echo $class; ?>" id="<?php echo $row['ticketID']; ?>">
             	<div class="ticket">
             		
 		            		<?php if (strpos($row['status'],'closed') !== false) {
 							    $class = 'green';
 							} ?>
-							<span class="ticketStatus <?php echo $class; ?>"><?=ucfirst($row['status'])?></span>
+							<span class="ticketStatus <?php echo $class; ?>"><?php echo ucfirst($row['status'])?></span>
 	            	<ul>
 	            		<li class="large">
 	            			<span class="heading">Ticket #:</span>
-	            			<a class="<?=strtolower($row['source'])?>Ticket" title="<?=$row['email']?>" href="view.php?id=<?php echo $row['ticketID']; ?>"><?php echo $ticketID; ?></a>
+	            			<a class="<?php echo strtolower($row['source']); ?>Ticket" title="<?php echo $row['email']; ?>" href="view.php?id=<?php echo $row['ticketID']; ?>"><?php echo $ticketID; ?></a>
 	            		</li>
 	            		<li>
 		            		<span class="heading">Create Date:</span>
-		            		<?=Format::db_date($row['created'])?>
+		            		<?php echo Format::db_date($row['created']); ?>
 	            		</li>
 	            		<li>
 		            		<span class="heading">Subject:</span>
 		            		<a href="tickets.php?id=<?php echo $row['ticketID']; ?>"><?php echo $subject; ?></a>
-		            		<?=$row['attachments']?"<span class='Icon file'>&nbsp;</span>":''?>
+		            		<?php echo $row['attachments']?"<span class='Icon file'>&nbsp;</span>":''; ?>
 	            		</li>
 	            		<li>
 		            		<span class="heading">Department:</span>
-		            		<?=Format::truncate($dept,30)?>
+		            		<?php echo Format::truncate($dept,30); ?>
 	            		</li>
 	            		<li>
 		            		<span class="heading">Email:</span>
-		            		<?=Format::truncate($row['email'],40)?>
+		            		<?php echo Format::truncate($row['email'],40); ?>
 	            		</li>
 	            	</ul>
 	            	<a href="tickets.php?id=<?php echo $row['ticketID']; ?>" class="button">View ticket</a>

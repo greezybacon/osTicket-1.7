@@ -15,7 +15,7 @@ if(!$dept || !$dept->isPublic())
 			<div class="twelvecol last">
 				<ul id="ticketInfo">
 					<li><i class="icon-doc-text"></i> Ticket #<?php echo $ticket->getExtId(); ?></li>
-					<li><i class="icon-comment"></i> Subject: <?=Format::htmlchars($ticket->getSubject())?></li>
+					<li><i class="icon-comment"></i> Subject: <?php echo Format::htmlchars($ticket->getSubject()); ?></li>
 				</ul>
 			</div>
 		</div>
@@ -30,31 +30,31 @@ if(!$dept || !$dept->isPublic())
 					<?php if (strpos($ticket->getStatus(),'closed') !== false) {
 					    $class = 'green';
 					} ?>
-						<span class="ticketStatus <?php echo $class; ?>"><?=$ticket->getStatus()?></span>
+						<span class="ticketStatus <?php echo $class; ?>"><?php echo $ticket->getStatus(); ?></span>
 					</p>
 				</div>
 	            <div>
 	                <span class="heading">Department:</span>
-	                <p><?=Format::htmlchars($dept->getName())?></p>
+	                <p><?php echo Format::htmlchars($dept->getName()); ?></p>
 	            </div>
 				<div>
 	                <span class="heading">Create Date:</span>
-	                <p><?=Format::db_datetime($ticket->getCreateDate())?></p>
+	                <p><?php echo Format::db_datetime($ticket->getCreateDate()); ?></p>
 	            </div>
 						
 			</div>
 			<div class="sixcol last">
 	            <div>
 	                <span class="heading">Name:</span>
-	                <p><?=Format::htmlchars($ticket->getName())?></p>
+	                <p><?php echo Format::htmlchars($ticket->getName()); ?></p>
 	            </div>
 	            <div>
 	                <span class="heading">Email:</span>
-	                <p><?=$ticket->getEmail()?></p>
+	                <p><?php echo $ticket->getEmail(); ?></p>
 	            </div>
 	            <div>
 	                <span class="heading">Phone:</span>
-	                <p><?=Format::phone($ticket->getPhoneNumber())?></p>
+	                <p><?php echo Format::phone($ticket->getPhoneNumber()); ?></p>
 	            </div>
 			</div>
 		</div>
@@ -102,9 +102,9 @@ if(!$dept || !$dept->isPublic())
 			</div>
 			<div>
 				<div id="reply" class="clear" style="padding-bottom:10px;">
-				<?if($ticket->isClosed()) {?>
+				<?php if($ticket->isClosed()) { ?>
 		        <div class="msg">Ticket will be reopened on message post</div>
-		        <?}?>
+		        <?php } ?>
 				<?php if($errors['err']) { ?>
 				    <div id="msg_error"><?php echo $errors['err']; ?></div>
 				<?php }elseif($msg) { ?>

@@ -6,11 +6,11 @@ $ticketid=Format::input($_POST['lticket']?$_POST['lticket']:$_GET['t']);
 ?>
 
 	<div>
-	    <?if($errors['err']) {?>
-	        <p align="center" id="errormessage"><?=$errors['err']?></p>
-	    <?}elseif($warn) {?>
-	        <p class="warnmessage"><?=$warn?></p>
-	    <?}?>
+	    <?php if($errors['err']) { ?>
+	        <p align="center" id="errormessage"><?php echo $errors['err']; ?></p>
+	    <?php } elseif($warn) { ?>
+	        <p class="warnmessage"><?php echo $warn; ?></p>
+	    <?php } ?>
 	</div>
 
 	<div class="container">
@@ -37,7 +37,7 @@ $ticketid=Format::input($_POST['lticket']?$_POST['lticket']:$_GET['t']);
 					</div>
 					<input type="submit" class="button" value="View Status">
 				</form>
-			    <span class="error"><?=Format::htmlchars($loginmsg)?></span>
+			    <span class="error"><?php echo Format::htmlchars($loginmsg); ?></span>
 	    	</div>
 		</div>
 	</div>
