@@ -2,7 +2,7 @@
 if(!defined('OSTSTAFFINC') || !$category || !$thisstaff) die('Access Denied');
 
 ?>
-<div style="width:700;padding-top:10px; float:left;">
+<div style="width:700px;padding-top:10px; float:left;">
   <h2>Frequently Asked Questions</h2>
 </div>
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">&nbsp;</div>
@@ -11,7 +11,7 @@ if(!defined('OSTSTAFFINC') || !$category || !$thisstaff) die('Access Denied');
 <div>
     <strong><?php echo $category->getName() ?></strong>
     <span>(<?php echo $category->isPublic()?'Public':'Internal'; ?>)</span>
-    <time>Last updated <?php echo Format::db_daydatetime($category->getUpdateDate()); ?></time>
+    <time>Last updated <?php echo Format::db_date($category->getUpdateDate()); ?></time>
 </div>
 <div class="cat-desc">
 <?php echo Format::safe_html($category->getDescription()); ?>
@@ -33,7 +33,7 @@ $sql='SELECT faq.faq_id, question, ispublished, count(attach.file_id) as attachm
     .' FROM '.FAQ_TABLE.' faq '
     .' LEFT JOIN '.FAQ_ATTACHMENT_TABLE.' attach ON(attach.faq_id=faq.faq_id) '
     .' WHERE faq.category_id='.db_input($category->getId())
-    .' GROUP BY faq.faq_id';
+    .' GROUP BY faq.faq_id ORDER BY question';
 if(($res=db_query($sql)) && db_num_rows($res)) {
     echo '<div id="faq">
             <ol>';

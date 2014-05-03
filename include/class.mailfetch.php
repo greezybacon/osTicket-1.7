@@ -28,7 +28,6 @@ class MailFetcher {
     var $srvstr;
 
     var $charset = 'UTF-8';
-    var $encodings =array('UTF-8','WINDOWS-1251', 'ISO-8859-5', 'ISO-8859-1','KOI8-R');
 
     function MailFetcher($email, $charset='UTF-8') {
 
@@ -108,7 +107,7 @@ class MailFetcher {
     }
 
     function getArchiveFolder() {
-        return $this->ht['archive_folder'];
+        return $this->mailbox_encode($this->ht['archive_folder']);
     }
 
     /* Core */
@@ -124,10 +123,19 @@ class MailFetcher {
     /* Default folder is inbox - TODO: provide user an option to fetch from diff folder/label */
     function open($box='INBOX') {
 
-        if($this->mbox)
+        if ($this->mbox)
            $this->close();
 
-        $this->mbox = imap_open($this->srvstr.$box, $this->getUsername(), $this->getPassword());
+        $args = array($this->srvstr.$this->mailbox_encode($box),
+            $this->getUsername(), $this->getPassword());
+
+        // Disable Kerberos and NTLM authentication if it happens to be
+        // supported locally or remotely
+        if (version_compare(PHP_VERSION, '5.3.2', '>='))
+            $args += array(NULL, 0, array(
+                'DISABLE_AUTHENTICATOR' => array('GSSAPI', 'NTLM')));
+
+        $this->mbox = call_user_func_array('imap_open', $args);
 
         return $this->mbox;
     }
@@ -158,7 +166,8 @@ class MailFetcher {
 
         if(!$folder) return false;
 
-        return imap_createmailbox($this->mbox, imap_utf7_encode($this->srvstr.trim($folder)));
+        return imap_createmailbox($this->mbox,
+           $this->srvstr.$this->mailbox_encode(trim($folder)));
     }
 
     /* check if a folder exists - create one if requested */
@@ -181,7 +190,9 @@ class MailFetcher {
             $text=imap_binary($text);
             break;
             case 3:
-            $text=imap_base64($text);
+            // imap_base64 implies strict mode. If it refuses to decode the
+            // data, then fallback to base64_decode in non-strict mode
+            $text = (($conv=imap_base64($text))) ? $conv : base64_decode($text);
             break;
             case 4:
             $text=imap_qprint($text);
@@ -196,9 +207,40 @@ class MailFetcher {
         return Format::encode($text, $charset, $encoding);
     }
 
-    //Generic decoder - resulting text is utf8 encoded -> mirrors imap_utf8
-    function mime_decode($text, $encoding='utf-8') {
+    function mailbox_encode($mailbox) {
+        if (!$mailbox)
+            return null;
+        // Properly encode the mailbox to UTF-7, according to rfc2060,
+        // section 5.1.3
+        elseif (function_exists('mb_convert_encoding'))
+            return mb_convert_encoding($mailbox, 'UTF7-IMAP', 'utf-8');
+        else
+            // XXX: This function has some issues on some versions of PHP
+            return imap_utf7_encode($mailbox);
+    }
 
+    /**
+     * Mime header value decoder. Usually unicode characters are encoded
+     * according to RFC-2047. This function will decode RFC-2047 encoded
+     * header values as well as detect headers which are not encoded.
+     *
+     * Caveats:
+     * If headers contain non-ascii characters the result of this function
+     * is completely undefined. If osTicket is corrupting your email
+     * headers, your mail software is not encoding the header text
+     * correctly.
+     *
+     * Returns:
+     * Header value, transocded to UTF-8
+     */
+    function mime_decode($text, $encoding='utf-8') {
+        // Handle poorly or completely un-encoded header values (
+        if (function_exists('mb_detect_encoding'))
+            if (($src_enc = mb_detect_encoding($text))
+                    && (strcasecmp($src_enc, 'ASCII') !== 0))
+                return Format::encode($text, $src_enc, $encoding);
+
+        // Handle ASCII text and RFC-2047 encoding
         $str = '';
         $parts = imap_mime_header_decode($text);
         foreach ($parts as $part)
@@ -227,10 +269,42 @@ class MailFetcher {
         $sender=$headerinfo->from[0];
         //Just what we need...
         $header=array('name'  =>@$sender->personal,
-                      'email' =>(strtolower($sender->mailbox).'@'.$sender->host),
+                      'email'  => trim(strtolower($sender->mailbox).'@'.$sender->host),
                       'subject'=>@$headerinfo->subject,
-                      'mid'    =>$headerinfo->message_id
+                      'mid'    => trim(@$headerinfo->message_id),
+                      'header' => $this->getHeader($mid),
+                      'in-reply-to' => $headerinfo->in_reply_to,
+                      'references' => $headerinfo->references,
                       );
+
+        if ($replyto = $headerinfo->reply_to) {
+            $header['reply-to'] = $replyto[0]->mailbox.'@'.$replyto[0]->host;
+            $header['reply-to-name'] = $replyto[0]->personal;
+        }
+
+        //Try to determine target email - useful when fetched inbox has
+        // aliases that are independent emails within osTicket.
+        $emailId = 0;
+        $tolist = array();
+        if($headerinfo->to)
+            $tolist = array_merge($tolist, $headerinfo->to);
+        if($headerinfo->cc)
+            $tolist = array_merge($tolist, $headerinfo->cc);
+        if($headerinfo->bcc)
+            $tolist = array_merge($tolist, $headerinfo->bcc);
+
+        foreach($tolist as $addr)
+            if(($emailId=Email::getIdByEmail(strtolower($addr->mailbox).'@'.$addr->host)))
+                break;
+
+        $header['emailId'] = $emailId;
+
+        // Ensure we have a message-id. If unable to read it out of the
+        // email, use the hash of the entire email headers
+        if (!$header['mid'] && $header['header'])
+            if (!($header['mid'] = Mail_Parse::findHeaderEntry($header['header'],
+                    'message-id')))
+                $header['mid'] = '<' . md5($header['header']) . '@local>';
 
         return $header;
     }
@@ -242,19 +316,27 @@ class MailFetcher {
             $struct=@imap_fetchstructure($this->mbox, $mid);
 
         //Match the mime type.
-        if($struct && !$struct->ifdparameters && strcasecmp($mimeType, $this->getMimeType($struct))==0) {
+        if($struct
+                && strcasecmp($mimeType, $this->getMimeType($struct))==0
+                && (!$struct->ifdparameters
+                    || !$this->findFilename($struct->dparameters))) {
+
             $partNumber=$partNumber?$partNumber:1;
             if(($text=imap_fetchbody($this->mbox, $mid, $partNumber))) {
                 if($struct->encoding==3 or $struct->encoding==4) //base64 and qp decode.
                     $text=$this->decode($text, $struct->encoding);
 
                 $charset=null;
-                if($encoding) { //Convert text to desired mime encoding...
-                    if($struct->ifparameters) {
-                        if(!strcasecmp($struct->parameters[0]->attribute,'CHARSET') && strcasecmp($struct->parameters[0]->value,'US-ASCII'))
-                            $charset=trim($struct->parameters[0]->value);
+                if ($encoding) { //Convert text to desired mime encoding...
+                    if ($struct->ifparameters && $struct->parameters) {
+                        foreach ($struct->parameters as $p) {
+                            if (!strcasecmp($p->attribute, 'charset')) {
+                                $charset = trim($p->value);
+                                break;
+                            }
+                        }
                     }
-                    $text=$this->mime_encode($text, $charset, $encoding);
+                    $text = $this->mime_encode($text, $charset, $encoding);
                 }
                 return $text;
             }
@@ -274,6 +356,31 @@ class MailFetcher {
         return $text;
     }
 
+    /**
+     * Searches the attribute list for a possible filename attribute. If
+     * found, the attribute value is returned. If the attribute uses rfc5987
+     * to encode the attribute value, the value is returned properly decoded
+     * if possible
+     *
+     * Attribute Search Preference:
+     *   filename
+     *   filename*
+     *   name
+     *   name*
+     */
+    function findFilename($attributes) {
+        foreach (array('filename', 'name') as $pref) {
+            foreach ($attributes as $a) {
+                if (strtolower($a->attribute) == $pref)
+                    return $a->value;
+                // Allow the RFC5987 specification of the filename
+                elseif (strtolower($a->attribute) == $pref.'*')
+                    return Format::decodeRfc5987($a->value);
+            }
+        }
+        return false;
+    }
+
     /*
      getAttachments
 
@@ -285,23 +392,16 @@ class MailFetcher {
 
         if($part && !$part->parts) {
             //Check if the part is an attachment.
-            $filename = '';
-            if($part->ifdisposition && in_array(strtolower($part->disposition), array('attachment', 'inline'))) {
-                $filename = $part->dparameters[0]->value;
-                //Some inline attachments have multiple parameters.
-                if(count($part->dparameters)>1) {
-                    foreach($part->dparameters as $dparameter) {
-                        if(!in_array(strtoupper($dparameter->attribute), array('FILENAME', 'NAME'))) continue;
-                        $filename = $dparameter->value;
-                        break;
-                    }
-                }
-            } elseif($part->ifparameters && $part->parameters && $part->type > 0) { //inline attachments without disposition.
-                foreach($part->parameters as $parameter) {
-                    if(!in_array(strtoupper($parameter->attribute), array('FILENAME', 'NAME'))) continue;
-                    $filename = $parameter->value;
-                    break;
-                }
+            $filename = false;
+            if ($part->ifdisposition && $part->ifdparameters
+                    && in_array(strtolower($part->disposition),
+                        array('attachment', 'inline'))) {
+                $filename = $this->findFilename($part->dparameters);
+            }
+            // Inline attachments without disposition.
+            if (!$filename && $part->ifparameters && $part->parameters
+                    && $part->type > 0) {
+                $filename = $this->findFilename($part->parameters);
             }
 
             if($filename) {
@@ -340,13 +440,15 @@ class MailFetcher {
     function getBody($mid) {
 
         $body ='';
-        if(!($body = $this->getPart($mid,'TEXT/PLAIN', $this->charset))) {
-            if(($body = $this->getPart($mid,'TEXT/HTML', $this->charset))) {
-                //Convert tags of interest before we striptags
-                $body=str_replace("</DIV><DIV>", "\n", $body);
-                $body=str_replace(array("<br>", "<br />", "<BR>", "<BR />"), "\n", $body);
-                $body=Format::safe_html($body); //Balance html tags & neutralize unsafe tags.
-            }
+        if ($body = $this->getPart($mid,'TEXT/PLAIN', $this->charset))
+            // The Content-Type was text/plain, so escape anything that
+            // looks like HTML
+            $body=Format::htmlchars($body);
+        elseif ($body = $this->getPart($mid,'TEXT/HTML', $this->charset)) {
+            //Convert tags of interest before we striptags
+            $body=str_replace("</DIV><DIV>", "\n", $body);
+            $body=str_replace(array("<br>", "<br />", "<BR>", "<BR />"), "\n", $body);
+            $body=Format::safe_html($body); //Balance html tags & neutralize unsafe tags.
         }
 
         return $body;
@@ -359,10 +461,6 @@ class MailFetcher {
         if(!($mailinfo = $this->getHeaderInfo($mid)))
             return false;
 
-        //Make sure the email is NOT already fetched... (undeleted emails)
-        if($mailinfo['mid'] && ($id=Ticket::getIdByMessageId(trim($mailinfo['mid']), $mailinfo['email'])))
-            return true; //Reporting success so the email can be moved or deleted.
-
 	    //Is the email address banned?
         if($mailinfo['email'] && TicketFilter::isBanned($mailinfo['email'])) {
 	        //We need to let admin know...
@@ -370,15 +468,11 @@ class MailFetcher {
 	        return true; //Report success (moved or delete)
         }
 
-        $emailId = $this->getEmailId();
-        $vars = array();
-        $vars['email']=$mailinfo['email'];
+        $vars = $mailinfo;
         $vars['name']=$this->mime_decode($mailinfo['name']);
         $vars['subject']=$mailinfo['subject']?$this->mime_decode($mailinfo['subject']):'[No Subject]';
         $vars['message']=Format::stripEmptyLines($this->getBody($mid));
-        $vars['header']=$this->getHeader($mid);
-        $vars['emailId']=$emailId?$emailId:$ost->getConfig()->getDefaultEmailId(); //ok to default?
-        $vars['mid']=$mailinfo['mid'];
+        $vars['emailId']=$mailinfo['emailId']?$mailinfo['emailId']:$this->getEmailId();
 
         //Missing FROM name  - use email address.
         if(!$vars['name'])
@@ -386,32 +480,36 @@ class MailFetcher {
 
         //An email with just attachments can have empty body.
         if(!$vars['message'])
-            $vars['message'] = '(EMPTY)';
+            $vars['message'] = '-';
 
         if($ost->getConfig()->useEmailPriority())
             $vars['priorityId']=$this->getPriority($mid);
 
         $ticket=null;
         $newticket=true;
-        //Check the subject line for possible ID.
-        if($vars['subject'] && preg_match ("[[#][0-9]{1,10}]", $vars['subject'], $regs)) {
-            $tid=trim(preg_replace("/[^0-9]/", "", $regs[0]));
-            //Allow mismatched emails?? For now NO.
-            if(!($ticket=Ticket::lookupByExtId($tid, $vars['email'])))
-                $ticket=null;
-        }
 
         $errors=array();
-        if($ticket) {
-            if(!($message=$ticket->postMessage($vars, 'Email')))
-                return false;
+        $seen = false;
 
+        if (($thread = ThreadEntry::lookupByEmailHeaders($vars, $seen))
+                && ($message = $thread->postEmail($vars))) {
+            if (!$message instanceof ThreadEntry)
+                // Email has been processed previously
+                return $message;
+            $ticket = $message->getTicket();
+        } elseif ($seen) {
+            // Already processed, but for some reason (like rejection), no
+            // thread item was created. Ignore the email
+            return true;
         } elseif (($ticket=Ticket::create($vars, $errors, 'Email'))) {
             $message = $ticket->getLastMessage();
         } else {
             //Report success if the email was absolutely rejected.
-            if(isset($errors['errno']) && $errors['errno'] == 403)
+            if(isset($errors['errno']) && $errors['errno'] == 403) {
+                // Never process this email again!
+                ThreadEntry::logEmailHeaders(0, $vars['mid']);
                 return true;
+            }
 
             # check if it's a bounce!
             if($vars['header'] && TicketFilter::isAutoBounce($vars['header'])) {
@@ -427,7 +525,6 @@ class MailFetcher {
         if($message
                 && $ost->getConfig()->allowEmailAttachments()
                 && ($struct = imap_fetchstructure($this->mbox, $mid))
-                && $struct->parts
                 && ($attachments=$this->getAttachments($struct))) {
 
             foreach($attachments as $a ) {
@@ -521,31 +618,38 @@ class MailFetcher {
             .' WHERE mail_active=1 '
             .'  AND (mail_errors<='.$MAXERRORS.' OR (TIME_TO_SEC(TIMEDIFF(NOW(), mail_lasterror))>'.($TIMEOUT*60).') )'
             .'  AND (mail_lastfetch IS NULL OR TIME_TO_SEC(TIMEDIFF(NOW(), mail_lastfetch))>mail_fetchfreq*60)'
-            .' ORDER BY mail_lastfetch DESC'
-            .' LIMIT 10'; //Processing up to 10 emails at a time.
+            .' ORDER BY mail_lastfetch ASC';
 
-       // echo $sql;
-        if(!($res=db_query($sql)) || !db_num_rows($res))
+        if (!($res=db_query($sql)) || !db_num_rows($res))
             return;  /* Failed query (get's logged) or nothing to do... */
 
-        //TODO: Lock the table here??
+        //Get max execution time so we can figure out how long we can fetch
+        // take fetching emails.
+        if (!($max_time = ini_get('max_execution_time')))
+            $max_time = 300;
 
-        while(list($emailId, $errors)=db_fetch_row($res)) {
+        //Start time
+        $start_time = Misc::micro_time();
+        while (list($emailId, $errors)=db_fetch_row($res)) {
+            //Break if we're 80% into max execution time
+            if ((Misc::micro_time()-$start_time) > ($max_time*0.80))
+                break;
+
             $fetcher = new MailFetcher($emailId);
-            if($fetcher->connect()) {
+            if ($fetcher->connect()) {
+                db_query('UPDATE '.EMAIL_TABLE.' SET mail_errors=0, mail_lastfetch=NOW() WHERE email_id='.db_input($emailId));
                 $fetcher->fetchEmails();
                 $fetcher->close();
-                db_query('UPDATE '.EMAIL_TABLE.' SET mail_errors=0, mail_lastfetch=NOW() WHERE email_id='.db_input($emailId));
             } else {
                 db_query('UPDATE '.EMAIL_TABLE.' SET mail_errors=mail_errors+1, mail_lasterror=NOW() WHERE email_id='.db_input($emailId));
-                if(++$errors>=$MAXERRORS) {
+                if (++$errors>=$MAXERRORS) {
                     //We've reached the MAX consecutive errors...will attempt logins at delayed intervals
                     $msg="\nosTicket is having trouble fetching emails from the following mail account: \n".
                         "\nUser: ".$fetcher->getUsername().
                         "\nHost: ".$fetcher->getHost().
                         "\nError: ".$fetcher->getLastError().
                         "\n\n ".$errors.' consecutive errors. Maximum of '.$MAXERRORS. ' allowed'.
-                        "\n\n This could be connection issues related to the mail server. Next delayed login attempt in aprox. $TIMEOUT minutes";
+                        "\n\n This could be connection issues related to the mail server. Next delayed login attempt in approx. $TIMEOUT minutes";
                     $ost->alertAdmin('Mail Fetch Failure Alert', $msg, true);
                 }
             }

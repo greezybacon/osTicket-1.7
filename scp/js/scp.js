@@ -1,9 +1,9 @@
-/* 
+/*
    scp.js
 
    osTicket SCP
    Copyright (c) osTicket.com
- 
+
  */
 
 function checkbox_checker(formObj, min, max) {
@@ -98,18 +98,20 @@ $(document).ready(function(){
             $('.dialog#confirm-action p#'+this.name+'-confirm')
             .show()
             .parent('div').show().trigger('click');
-        } 
-        
+        }
+
         return false;
      });
 
     $(window).scroll(function () {
-         
-        $('.dialog').css({
-            top  : (($(this).height() /5)+$(this).scrollTop()),
-            left : ($(this).width() / 2 - 300)
-         });
-     });
+        var w = $(window);
+        $('.dialog').each(function() {
+            $(this).css({
+                top  : w.height() / 5 + w.scrollTop(),
+                left : (w.width() - $(this).outerWidth()) / 2
+            });
+        });
+    });
 
     if($.browser.msie) {
         $('.inactive').mouseenter(function() {
@@ -228,11 +230,11 @@ $(document).ready(function(){
             var sr_origin = '//' + host;
             var origin = protocol + sr_origin;
             // Allow absolute or scheme relative URLs to same origin
-            return (url == origin || url.slice(0, origin.length + 1) == origin + '/') || 
+            return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
                 (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
                 // or any other URL that isn't scheme relative or absolute i.e
                 // relative.
-                !(/^(\/\/|http:|https:).*/.test(url));    
+                !(/^(\/\/|http:|https:).*/.test(url));
         }
 
         function safeMethod(method) {
@@ -245,31 +247,70 @@ $(document).ready(function(){
        });
 
     /* Get config settings from the backend */
-    var $config = null;
-    $.ajax({
-        url: "ajax.php/config/scp",
-        dataType: 'json',
-        async: false,
-        success: function (config) {
-            $config = config;
-            }
-        });
-     
+    jQuery.fn.exists = function() { return this.length>0; };
+
+    var getConfig = (function() {
+        var dfd = $.Deferred();
+        return function() {
+            if (!dfd.isResolved())
+                $.ajax({
+                    url: "ajax.php/config/scp",
+                    dataType: 'json',
+                    success: function (json_config) {
+                        dfd.resolve(json_config);
+                    }
+                });
+            return dfd;
+        }
+    })();
     /* Multifile uploads */
-     $('.multifile').multifile({
-        container:   '.uploads',
-        max_uploads: ($config && $config.max_file_uploads)?$config.max_file_uploads:1,
-        file_types:  ($config && $config.file_types)?$config.file_types:".*",
-        max_file_size: ($config && $config.max_file_size)?$config.max_file_size:0
+    var elems = $('.multifile');
+    if (elems.exists()) {
+        /* Get config settings from the backend */
+        getConfig().then(function(c) {
+            elems.multifile({
+                container:   '.uploads',
+                max_uploads: c.max_file_uploads || 1,
+                file_types:  c.file_types || ".*",
+                max_file_size: c.max_file_size || 0
+            });
         });
+    }
 
     /* Datepicker */
-    $('.dp').datepicker({
-        numberOfMonths: 2,
-        showButtonPanel: true,
-        buttonImage: './images/cal.png',
-        showOn:'both'
-     });
+    getConfig().then(function(c) {
+        var df = c.date_format||'m/d/Y',
+            translation = {
+                'd':'dd',
+                'j':'d',
+                'z':'o',
+                'm':'mm',
+                'F':'MM',
+                'n':'m',
+                'Y':'yy'
+            };
+        // Change PHP formats to datepicker ones
+        $.each(translation, function(php, jqdp) {
+            df = df.replace(php, jqdp);
+        });
+        $('.dp').datepicker({
+            numberOfMonths: 2,
+            showButtonPanel: true,
+            buttonImage: './images/cal.png',
+            showOn:'both',
+            dateFormat: df,
+        });
+        $(document).on('submit', 'form', function() {
+            $('.dp', $(this)).each(function(i, e) {
+                var $e = $(e),
+                    d = $e.datepicker('getDate'),
+                    day = ('0'+d.getDate()).substr(-2),
+                    month = ('0'+(d.getMonth()+1)).substr(-2),
+                    year = d.getFullYear();
+                $e.val(year+'-'+month+'-'+day);
+            });
+        });
+    });
 
     /* NicEdit richtext init */
     var rtes = $('.richtext');
@@ -327,13 +368,16 @@ $(document).ready(function(){
         top     : 0,
         left    : 0
     });
-       
+
     //Dialog
-    $('.dialog').css({
-        top  : ($(window).height() /5),
-        left : ($(window).width() / 2 - 300)
+    $('.dialog').each(function() {
+        var w = $(window);
+        $(this).css({
+            top  : w.height() / 5 + w.scrollTop(),
+            left : (w.width() - $(this).outerWidth()) / 2
+        });
     });
-      
+
     $('.dialog').delegate('input.close, a.close', 'click', function(e) {
         e.preventDefault();
         $(this).parents('div.dialog').hide()
@@ -348,11 +392,11 @@ $(document).ready(function(){
         left : ($(window).width() / 2 - 300)
     });
 
-    /* loading ... */    
+    /* loading ... */
     $("#loading").css({
         top  : ($(window).height() / 3),
-        left : ($(window).width() / 2 - 160)
-        });
+        left : ($(window).width() - $("#loading").outerWidth()) / 2
+    });
 
     $('#go-advanced').click(function(e) {
         e.preventDefault();
@@ -381,7 +425,7 @@ $(document).ready(function(){
         }
     });
 
-    $('#advanced-search form#search').submit(function(e) { 
+    $('#advanced-search form#search').submit(function(e) {
         e.preventDefault();
         var fObj = $(this);
         var elem = $('#advanced-search');
@@ -396,7 +440,7 @@ $(document).ready(function(){
                    return true;
                 },
                 success: function (resp) {
-                        
+
                     if(resp.success) {
                         $('#result-count').html('<div class="success">' + resp.success +'</div>');
                     } else if (resp.fail) {

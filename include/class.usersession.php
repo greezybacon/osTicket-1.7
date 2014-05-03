@@ -109,7 +109,7 @@ class ClientSession extends Client {
 
     function ClientSession($email, $id){
         parent::Client($id, $email);
-        $this->session= new UserSession($email);
+        $this->session= new UserSession(strtolower($email));
     }
 
     function isValid(){
@@ -147,7 +147,7 @@ class StaffSession extends Staff {
     
     function StaffSession($var){
         parent::Staff($var);
-        $this->session= new UserSession($var);
+        $this->session= new UserSession($this->getId());
     }
 
     function isValid(){

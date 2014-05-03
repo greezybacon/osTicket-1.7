@@ -61,13 +61,15 @@ $qwhere ='';
 
 $depts=$thisstaff->getDepts();    
 $qwhere =' WHERE ( '
-        .'  ticket.staff_id='.db_input($thisstaff->getId());
+        .'  ( ticket.staff_id='.db_input($thisstaff->getId())
+        .' AND ticket.status="open")';
 
 if(!$thisstaff->showAssignedOnly())
     $qwhere.=' OR ticket.dept_id IN ('.($depts?implode(',', db_input($depts)):0).')';
 
 if(($teams=$thisstaff->getTeams()) && count(array_filter($teams)))
-    $qwhere.=' OR ticket.team_id IN('.implode(',', db_input(array_filter($teams))).') ';
+    $qwhere.=' OR (ticket.team_id IN ('.implode(',', db_input(array_filter($teams)))
+            .') AND ticket.status="open")';
 
 $qwhere .= ' )';
 
@@ -119,21 +121,12 @@ if($search):
             //This sucks..mass scan! search anything that moves! 
             
             $deep_search=true;
-            if($_REQUEST['stype'] && $_REQUEST['stype']=='FT') { //Using full text on big fields.
-                $qwhere.=" AND ( ticket.email LIKE '%$queryterm%'".
-                            " OR ticket.name LIKE '%$queryterm%'".
-                            " OR ticket.subject LIKE '%$queryterm%'".
-                            " OR thread.title LIKE '%$queryterm%'".
-                            " OR MATCH(thread.body)   AGAINST('$queryterm')".
-                            ' ) ';
-            }else{
-                $qwhere.=" AND ( ticket.email LIKE '%$queryterm%'".
-                            " OR ticket.name LIKE '%$queryterm%'".
-                            " OR ticket.subject LIKE '%$queryterm%'".
-                            " OR thread.body LIKE '%$queryterm%'".
-                            " OR thread.title LIKE '%$queryterm%'".
-                            ' ) ';
-            }
+            $qwhere.=" AND ( ticket.email LIKE '%$queryterm%'".
+                        " OR ticket.name LIKE '%$queryterm%'".
+                        " OR ticket.subject LIKE '%$queryterm%'".
+                        " OR thread.body LIKE '%$queryterm%'".
+                        " OR thread.title LIKE '%$queryterm%'".
+                        ' ) ';
         }
     }
     //department

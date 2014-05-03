@@ -1,3 +1,204 @@
+osTicket v1.7.7
+===============
+### Enhancements
+  * Departments can have a department if there are no members (osTicket/osTicket-1.8#618)
+  * Clicking off of popup tips will close them (osTicket/osTicket-1.8#645)
+
+### Bugs
+  * Fix stripping of leading zeros from phone numbers (osTicket/osTicket-1.8#622)
+  * Display FAQ modify time rather than category modify time (osTicket/osTicket-1.8#647)
+  * Usernames can have Unicode characters (osTicket/osTicket-1.8#650)
+  * New SLA's default to have alerts enabled (osTicket/osTicket-1.8#654)
+  * Fix crash viewing ticket in the client portal if no departments are public (osTicket/osTicket-1.8#658)
+  * Allow manual update of SLA to a transient SLA (osTicket/osTicket-1.8#663)
+  * Fix upgrade crash from some osTicket 1.6 installations (osTicket/osTicket-1.8#687)
+  * Fix attachments from new ticket by staff to be associated with the response (osTicket/osTicket-1.8#688)
+
+### Performance and Security
+  * Staff can only see closed tickets if they have access via group or primary department (osTicket/osTicket-1.8#623, osTicket/osTicket-1.8#655)
+
+osTicket v1.7.6
+===============
+### Bugs
+  * Retry queries on MySQL error 1213 (osTicket/osTicket-1.8#493)
+  * Client login email is not case-sensitive (1b24bcf)
+  * Fix fetching from more than 10 mail accounts (osTicket/osTicket-1.8#468)
+  * Fix whitespace mangling of Unicode text with non-breaking-spaces (osTicket/osTicket-1.8#502)
+  * Fix delivery issue of emails delivered to group mailboxes (osTicket/osTicket-1.8#510)
+  * Fix dashboard report timeframe (osTicket/osTicket-1.8#520)
+  * Consider the `delivered-to` header in finding the system email (osTicket/osTicket-1.8#535)
+  * Fix email address list parsing on bad MIME headers (osTicket/osTicket-1.8#560)
+  * Fix login issue when upgrading from osTicket 1.6 (osTicket/osTicket-1.8#571)
+  * Fix attachment corruption on some documents like PDFs (osTicket/osTicket-1.8#576)
+
+### Performance and Security
+  * Reuse SMTP connections where possible (osTicket/osTicket-1.8#462)
+  * Enforce max file size for attachments sent via API (osTicket/osTicket-1.8#568)
+
+osTicket v1.7.5
+===============
+### Bugs
+  * Correctly upgrade the ban list from osTicket 1.6 (#869)
+  * Correctly detect ticket number in the subject line without brackets (#873, #877)
+  * Fixup redirects for modern versions of IIS (#874)
+  * Fix case-sensitive login matching on email addresses (#876)
+  * Fix missing argument to `TicketLock::lookup` (#878)
+  * Fix MYSQL constants no longer available in PHP 5.5 (5e8e233)
+  * Fix incorrect queue count for limited users (b692e5e)
+
+osTicket v1.7.4
+===============
+### Enhancements
+  * Allow local unix socket specification (#864)
+
+### Bugs
+  * Fix negative logic issue in ticket ticket filters (#839)
+  * Handle emails with poorly encoded headers (#826, #839)
+  * Properly handle HTML chars in web posts (#851)
+  * Properly handle emails body with inline Content-Disposition parameters (#853)
+  * Fix bug handling custom SQL streams (#854)
+
+### Performance and Security
+  * Ticket counters are significantly faster (#862)
+
+osTicket v1.7.3
+===============
+### Enhancements
+  * Ticket thread items are now available for email templates (#790)
+  * Support MySQL servers on a non-standard port number, which is also not set
+    in the `php.ini` file (#775)
+
+### Bugfixes
+  * Fix email handling where the character set advertised is `us-ascii` but
+    `iso-8859-1` was intended (#770)
+  * Ticket source is now editable (#772, #777)
+  * Email parsing would crash if `Reply-To` header was not found (#780)
+  * CSRF token creation would fail on some Windows installations (#771, #776)
+  * Tickets without an SLA set would never go overdue (#757, #767)
+  * FAQ search now hits category names (#781)
+  * FAQ search hits are sorted by article title now (#786)
+  * Email replies with nothing before the quoted response marker should remain
+    as is (#787)
+  * CAPTCHA responses are now considered case-insensitive (#823)
+  * `References` email header how includes the parent email `Message-Id` (#825)
+  * Email attachment parsing would crash if the `Content-Disposition` header
+    had no parameters (#828)
+  * Date format on the jQuery-UI datepicker is admin configurable now (#829)
+
+### Performance
+  * Scanning deleting orphaned files is much faster (#773, #778)
+
+osTicket v1.7.2
+===============
+### Enhancements
+  * The ticket number is no longer required in the subject line and staff can
+    reply to emails and create an internal note (*released in v1.7.1.2*)
+  * Show customized site logo on PDF output (#763)
+  * Support deployment for initial install with cli deploy script (#750)
+  * Require complete regression test pass before packaging new release (#751)
+  * Die with HTTP/500 for misconfiguration or database connect failure (#762)
+
+### Bug fixes
+  * Detect and import inline attachments without a Content-Disposition header
+    (#737)
+  * Show correct template description *again* (#742, #743)
+  * Import attachments from emails continuing a ticket thread (*regression
+    introduced in v1.7.1.2*) (#745)
+  * Support UTF-8 encoded filenames for fetched emails (#738)
+  * Disable Kerberos and NTLM authentication in mail fetching (#739)
+  * Forbid empty reply-separator setting (#752)
+  * Only email administrators for log messages that would be written to the
+    database (#754)
+  * Emails fetched and rejected by a ticket filter that are not deleted or
+    moved to a folder will not be re-fetched and re-rejected (#755)
+  * Workaround for some mail clients' inability to properly decode
+    quoted-printable encoded emails (#760)
+  * Inline text bodies are incorrectly detected as attachments without a
+    filename (#761)
+  * Properly decode and display some international chars in PDF printing (#765)
+  * Do not double encode XML entities in ticket thread titles (#718, #567)
+  * Display correct template description on edit (#724, #727)
+  * Fix download of attachments with commas (',') in the filename (#702)
+  * Fix incorrect content-type header for CAPTCHA (#699)
+
+### Security
+  * Require email address match if ticket number is matched in subject line and
+    neither references or in-reply-to headers match an existing ticket thread
+    item (*regression introduced in v1.7.1.2*) (#748)
+
+### Performance
+  * Address database performance issue scanning for orphaned file_chunk records
+    (#764)
+
+osTicket v1.7.1
+===============
+### Bugfixes
+  * Properly reject attachments submitted via the API (#668)
+  * Correctly support the "Use Reply-To" in ticket filters (#669)
+  * Don't log users out after changing username or email address (#684)
+  * Don't leak private FAQ article titles (#683)
+
+osTicket v1.7.1-rc1
+===================
+### Enhancements
+  * Custom logos and site pages (#604, #632, #616)
+  * Password reset link (#638)
+  * Export and import feature. Useful for migrations and backups. (#626)
+  * Use your email address as your username for logins (#631)
+  * SLA's can be marked *transient*. Tickets with a transient SLA will
+    change to the SLA of the new department or help-topic when transferred
+    or edited.
+  * Support installation on MySQL and MariaDB clusters. Use default storage
+    engine and don't assume predictable auto-increment values (#568, #621)
+
+### Geeky Stuff
+  * mysqli support for PHP5+
+  * SSL support for database connections
+  * Namespaced configuration. This greatly simplifies the process of adding
+  * new configurable item (#564)
+  * Add signals API. A simple event hooking mechanism to allow for
+  * extensibility (#577)
+  * Add deployment command-line script (#586)
+  * Allow XHTML editing in the nicEditor (#615)
+  * Allow parallel database migration streams (#563) -- paves the way for
+    *extensions*
+  * Use row-based email templates (#604) -- simplifies the process of adding
+    new email message templates (think *extensions*)
+  * Support fetching from email boxes with aliased email addresses (#663)
+  * Introduce new crypto library that provides failsafe encryption for email
+    passwords (#651)
+
+### Bugfixes
+  * Several typos in code and messages (#617, #618, #644, #660)
+  * Fix several upgrader bugs (#548, #619)
+  * Fix install fail on some Windows platforms (#570)
+  * Fix several issues in the command-line management (#580)
+  * Make room for command-line installation of osTicket (#581)
+  * *regression* Fix corrupted attachment downloads (#579, #583)
+  * Fix truncated attachment downloads when `zlib.output_compression` is
+    enabled (#596)
+  * Disable cron activities when upgrade is pending (#594)
+  * Provide failsafe encoding for improperly-formatted emails (#601)
+  * Fix corrupted email attachments processed via `pipe.php` (#607)
+  * Fix discarding of poorly encoded base64 emails (#624)
+  * Support MariaDB 10.0+ (#630)
+  * Properly trim ticket email and name fields (#600)
+  * Fix truncated text from text/plain emails and web interface posts (#652)
+  * Add **Assigned To** and other fields to ticket view export (#646)
+  * *regression* Fix attachment migration (#648)
+  * Display correct staff notes (#588)
+  * Display correct auto-response email for departments (#575)
+  * Fix login form ("Authentication Required") loop (#653)
+  * Ensure email message-id is fetched correctly (#664)
+  * Ensure X-Forwarded-For header does not have leading or trailing
+    whitespace (#665)
+
+### Performance
+  * Only fetch configuration for multifile upload if necessary (#637)
+  * Don't use sessions on the API (#623)
+  * *regression* Avoid an extra query per request to fetch schema signature
+    (#658)
+
 New stuff in 1.7.0
 ====================
    * Bug fixes from rc6

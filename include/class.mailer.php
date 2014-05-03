@@ -2,7 +2,7 @@
 /*********************************************************************
     class.mailer.php
 
-    osTicket mailer 
+    osTicket mailer
 
     It's mainly PEAR MAIL wrapper for now (more improvements planned).
 
@@ -27,10 +27,10 @@ class Mailer {
 
     var $smtp = array();
     var $eol="\n";
-    
+
     function Mailer($email=null, $options=null) {
         global $cfg;
-       
+
         if(is_object($email) && $email->isSMTPEnabled() && ($info=$email->getSMTPInfo())) { //is SMTP enabled for the current email?
             $this->smtp = $info;
         } elseif($cfg && ($e=$cfg->getDefaultSMTPEmail()) && $e->isSMTPEnabled()) { //What about global SMTP setting?
@@ -54,7 +54,7 @@ class Mailer {
     function getEmail() {
         return $this->email;
     }
-    
+
     function getSMTPInfo() {
         return $this->smtp;
     }
@@ -110,17 +110,36 @@ class Mailer {
                 'X-Mailer' =>'osTicket Mailer'
                );
 
-        //Set bulk/auto-response headers.
-        if($options && ($options['autoreply'] or $options['bulk'])) {
-            $headers+= array(
-                    'X-Autoreply' => 'yes',
-                    'X-Auto-Response-Suppress' => 'ALL, AutoReply',
-                    'Auto-Submitted' => 'auto-replied');
 
-            if($options['bulk']) 
-                $headers+= array('Precedence' => 'bulk');
-            else
-                $headers+= array('Precedence' => 'auto_reply');
+        //Bulk.
+        if (isset($options['bulk']) && $options['bulk'])
+            $headers+= array('Precedence' => 'bulk');
+
+        //Auto-reply - mark as autoreply and supress all auto-replies
+        if (isset($options['autoreply']) && $options['autoreply']) {
+            $headers+= array(
+                    'Precedence' => 'auto_reply',
+                    'X-Autoreply' => 'yes',
+                    'X-Auto-Response-Suppress' => 'DR, RN, OOF, AutoReply',
+                    'Auto-Submitted' => 'auto-replied');
+        }
+
+        //Notice (sort of automated - but we don't want auto-replies back
+        if (isset($options['notice']) && $options['notice'])
+            $headers+= array(
+                    'X-Auto-Response-Suppress' => 'OOF, AutoReply',
+                    'Auto-Submitted' => 'auto-generated');
+
+        if ($options) {
+            if (isset($options['inreplyto']) && $options['inreplyto'])
+                $headers += array('In-Reply-To' => $options['inreplyto']);
+            if (isset($options['references']) && $options['references']) {
+                if (is_array($options['references']))
+                    $headers += array('References' =>
+                        implode(' ', $options['references']));
+                else
+                    $headers += array('References' => $options['references']);
+            }
         }
 
         $mime = new Mail_mime();
@@ -134,11 +153,11 @@ class Mailer {
                     $mime->addAttachment($attachment['file'],$attachment['type'],$attachment['name']);
             }
         }
-        
+
         //Desired encodings...
         $encodings=array(
                 'head_encoding' => 'quoted-printable',
-                'text_encoding' => 'quoted-printable',
+                'text_encoding' => 'base64',
                 'html_encoding' => 'base64',
                 'html_charset'  => 'utf-8',
                 'text_charset'  => 'utf-8',
@@ -148,20 +167,37 @@ class Mailer {
         $body = $mime->get($encodings);
         //encode the headers.
         $headers = $mime->headers($headers, true);
+
+        // Cache smtp connections made during this request
+        static $smtp_connections = array();
         if(($smtp=$this->getSMTPInfo())) { //Send via SMTP
-            $mail = mail::factory('smtp',
-                    array ('host' => $smtp['host'],
-                           'port' => $smtp['port'],
-                           'auth' => $smtp['auth'],
-                           'username' => $smtp['username'],
-                           'password' => $smtp['password'],
-                           'timeout'  => 20,
-                           'debug' => false,
-                           ));
+            $key = sprintf("%s:%s:%s", $smtp['host'], $smtp['port'],
+                $smtp['username']);
+            if (!isset($smtp_connections[$key])) {
+                $mail = mail::factory('smtp', array(
+                    'host' => $smtp['host'],
+                    'port' => $smtp['port'],
+                    'auth' => $smtp['auth'],
+                    'username' => $smtp['username'],
+                    'password' => $smtp['password'],
+                    'timeout'  => 20,
+                    'debug' => false,
+                    'persist' => true,
+                ));
+                if ($mail->connect())
+                    $smtp_connections[$key] = $mail;
+            }
+            else {
+                // Use persistent connection
+                $mail = $smtp_connections[$key];
+            }
 
             $result = $mail->send($to, $headers, $body);
             if(!PEAR::isError($result))
                 return $messageId;
+
+            // Force reconnect on next ->send()
+            unset($smtp_connections[$key]);
 
             $alert=sprintf("Unable to email via SMTP:%s:%d [%s]\n\n%s\n",
                     $smtp['host'], $smtp['port'], $smtp['username'], $result->getMessage());
@@ -176,7 +212,7 @@ class Mailer {
 
     function logError($error) {
         global $ost;
-        //NOTE: Admin alert overwrite - don't email when having email trouble!
+        //NOTE: Admin alert override - don't email when having email trouble!
         $ost->logError('Mailer Error', $error, false);
     }
 

@@ -79,12 +79,15 @@ if(!defined('OSTCLIENTINC')) die('Access Denied');
 			
 			
 			    if($_REQUEST['q']) {
-			        $sql.=" AND question LIKE ('%".db_input($_REQUEST['q'],false)."%') 
+			        $sql.=" AND (question LIKE ('%".db_input($_REQUEST['q'],false)."%') 
 			                 OR answer LIKE ('%".db_input($_REQUEST['q'],false)."%') 
-			                 OR keywords LIKE ('%".db_input($_REQUEST['q'],false)."%')";
+			                 OR keywords LIKE ('%".db_input($_REQUEST['q'],false)."%')
+                             OR cat.name LIKE ('%".db_input($_REQUEST['q'],false)."%')
+                             OR cat.description LIKE ('%".db_input($_REQUEST['q'],false)."%')
+                             )";
 			    }
 			
-			    $sql.=' GROUP BY faq.faq_id';
+			    $sql.=' GROUP BY faq.faq_id ORDER BY question';
 			    if(($res=db_query($sql)) && ($num=db_num_rows($res))) {
 			        echo '<div id="faq">'.$num.' FAQs matched your search criteria:
 			                <ul id="kbResults">';

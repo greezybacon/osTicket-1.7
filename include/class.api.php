@@ -143,7 +143,7 @@ class API {
             $sql='INSERT INTO '.API_KEY_TABLE.' SET '.$sql
                 .',created=NOW() '
                 .',ipaddr='.db_input($vars['ipaddr'])
-                .',apikey='.db_input(strtoupper(md5(time().$vars['ipaddr'].md5(Misc::randcode(16)))));
+                .',apikey='.db_input(strtoupper(md5(time().$vars['ipaddr'].md5(Misc::randCode(16)))));
 
             if(db_query($sql) && ($id=db_insert_id()))
                 return $id;
@@ -317,8 +317,9 @@ class ApiXmlDataParser extends XmlDataParser {
         if (!is_array($current))
             return $current;
         foreach ($current as $key=>&$value) {
-            if ($key == "phone") {
-                $current["phone_ext"] = $value["ext"];  # PHP [like] point
+            if ($key == "phone" && is_array($value)) {
+                if (isset($value['ext']))
+                    $current["phone_ext"] = $value["ext"];  # PHP [like] point
                 $value = $value[":text"];
             } else if ($key == "alert") {
                 $value = (bool)$value;
@@ -339,6 +340,7 @@ class ApiXmlDataParser extends XmlDataParser {
                 $value = $this->fixup($value);
             }
         }
+        unset($value);
 
         return $current;
     }
@@ -415,18 +417,13 @@ class ApiEmailDataParser extends EmailDataParser {
         $data['source'] = 'Email';
 
         if(!$data['message'])
-            $data['message'] = $data['subject']?$data['subject']:'(EMPTY)';
+            $data['message'] = $data['subject']?$data['subject']:'-';
 
         if(!$data['subject'])
             $data['subject'] = '[No Subject]';
 
         if(!$data['emailId'])
             $data['emailId'] = $cfg->getDefaultEmailId();
-
-        if($data['email'] && preg_match ('[[#][0-9]{1,10}]', $data['subject'], $matches)) {
-            if(($tid=Ticket::getIdByExtId(trim(preg_replace('/[^0-9]/', '', $matches[0])), $data['email'])))
-                $data['ticketId'] = $tid;
-        }
 
         if(!$cfg->useEmailPriority())
             unset($data['priorityId']);

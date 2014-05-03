@@ -30,10 +30,6 @@ class Format {
         return round(($bytes/1024000),1).' mb';
     }
 
-    function file_name($filename) {
-        return preg_replace('/\s+/', '_', $filename);
-    }
-
     /* encode text into desired encoding - taking into accout charset when available. */
     function encode($text, $charset=null, $encoding='utf-8') {
 
@@ -41,10 +37,15 @@ class Format {
         if(!$charset && function_exists('mb_detect_encoding'))
             $charset = mb_detect_encoding($text);
 
-        //Cleanup - junk
-        if($charset && in_array(trim($charset), array('default','x-user-defined')))
+        // Cleanup - incorrect, bogus, or ambiguous charsets
+        if($charset && in_array(strtolower(trim($charset)),
+                array('default','x-user-defined','iso','us-ascii')))
             $charset = 'ISO-8859-1';
 
+        if ($charset && strcasecmp($charset, $encoding) === 0)
+            return $text;
+
+        $original = $text;
         if(function_exists('iconv') && $charset)
             $text = iconv($charset, $encoding.'//IGNORE', $text);
         elseif(function_exists('mb_convert_encoding') && $charset && $encoding)
@@ -52,7 +53,10 @@ class Format {
         elseif(!strcasecmp($encoding, 'utf-8')) //forced blind utf8 encoding.
             $text = function_exists('imap_utf8')?imap_utf8($text):utf8_encode($text);
 
-        return $text;
+        // If $text is false, then we have a (likely) invalid charset, use
+        // the original text and assume 8-bit (latin-1 / iso-8859-1)
+        // encoding
+        return (!$text && $original) ? $original : $text;
     }
 
     //Wrapper for utf-8 encoding.
@@ -76,6 +80,23 @@ class Format {
         }
 
         return $text;
+    }
+
+    /**
+     * Decodes filenames given in the content-disposition header according
+     * to RFC5987, such as filename*=utf-8''filename.png. Note that the
+     * language sub-component is defined in RFC5646, and that the filename
+     * is URL encoded (in the charset specified)
+     */
+    function decodeRfc5987($filename) {
+        $match = array();
+        if (preg_match("/([\w!#$%&+^_`{}~-]+)'([\w-]*)'(.*)$/",
+                $filename, $match))
+            // XXX: Currently we don't care about the language component.
+            //      The  encoding hint is sufficient.
+            return self::utf8encode(urldecode($match[3]), $match[1]);
+        else
+            return $filename;
     }
 
 	function phone($phone) {
@@ -194,14 +215,14 @@ class Format {
         $token = $ost->getLinkToken();
         //Not perfect but it works - please help improve it.
         $text=preg_replace_callback('/(((f|ht){1}tp(s?):\/\/)[-a-zA-Z0-9@:%_\+.~#?&;\/\/=]+)/',
-                create_function('$matches',
-                    sprintf('return "<a href=\"l.php?url=".urlencode($matches[1])."&auth=%s\" target=\"_blank\">".$matches[1]."</a>";',
+                create_function('$matches', # nolint
+                    sprintf('return "<a href=\"l.php?url=".urlencode($matches[1])."&auth=%s\" target=\"_blank\">".$matches[1]."</a>";', # nolint
                         $token)),
                 $text);
 
         $text=preg_replace_callback("/(^|[ \\n\\r\\t])(www\.([a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+)(\/[^\/ \\n\\r]*)*)/",
-                create_function('$matches',
-                    sprintf('return "<a href=\"l.php?url=".urlencode("http://".$matches[2])."&auth=%s\" target=\"_blank\">".$matches[2]."</a>";',
+                create_function('$matches', # nolint
+                    sprintf('return "<a href=\"l.php?url=".urlencode("http://".$matches[2])."&auth=%s\" target=\"_blank\">".$matches[2]."</a>";', # nolint
                         $token)),
                 $text);
 
@@ -211,15 +232,10 @@ class Format {
         return $text;
     }
 
-    function stripEmptyLines ($string) {
+    function stripEmptyLines($string) {
         //return preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $string);
         //return preg_replace('/\s\s+/',"\n",$string); //Too strict??
         return preg_replace("/\n{3,}/", "\n\n", $string);
-    }
-
-
-    function linebreaks($string) {
-        return urldecode(ereg_replace("%0D", " ", urlencode($string)));
     }
 
 
@@ -291,6 +307,21 @@ class Format {
         $offset+=$daylight?date('I', $gmtimestamp):0; //Daylight savings crap.
 
         return date($format, ($gmtimestamp+ ($offset*3600)));
+    }
+
+    // Thanks, http://stackoverflow.com/a/2955878/1025836
+    /* static */
+    function slugify($text) {
+        // replace non letter or digits by -
+        $text = preg_replace('~[^\p{L}\p{N}]+~u', '-', $text);
+
+        // trim
+        $text = trim($text, '-');
+
+        // lowercase
+        $text = strtolower($text);
+
+        return (empty($text)) ? 'n-a' : $text;
     }
 
 }

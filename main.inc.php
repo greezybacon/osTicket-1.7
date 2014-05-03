@@ -34,8 +34,6 @@
     ini_set('session.use_trans_sid', 0);
     #No cache
     session_cache_limiter('nocache');
-    #Cookies
-    //ini_set('session.cookie_path','/osticket/');
 
     #Error reporting...Good idea to ENABLE error reporting to a file. i.e display_errors should be set to false
     $error_reporting = E_ALL & ~E_NOTICE;
@@ -46,8 +44,8 @@
     error_reporting($error_reporting); //Respect whatever is set in php.ini (sysadmin knows better??)
 
     #Don't display errors
-    ini_set('display_errors', 0);
-    ini_set('display_startup_errors', 0);
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
 
     //Default timezone
     if (!ini_get('date.timezone')) {
@@ -62,21 +60,28 @@
     }
 
     #Set Dir constants
-    if(!defined('ROOT_PATH')) define('ROOT_PATH','./'); //root path. Damn directories
-
-    define('ROOT_DIR',str_replace('\\\\', '/', realpath(dirname(__FILE__))).'/'); #Get real path for root dir ---linux and windows
+    define('ROOT_DIR',str_replace('\\', '/', realpath(dirname(__FILE__))).'/'); #Get real path for root dir ---linux and windows
     define('INCLUDE_DIR',ROOT_DIR.'include/'); //Change this if include is moved outside the web path.
     define('PEAR_DIR',INCLUDE_DIR.'pear/');
     define('SETUP_DIR',INCLUDE_DIR.'setup/');
 
     define('UPGRADE_DIR', INCLUDE_DIR.'upgrader/');
-    define('SQL_DIR', UPGRADE_DIR.'sql/');
+    define('I18N_DIR', INCLUDE_DIR.'i18n/');
 
     /*############## Do NOT monkey with anything else beyond this point UNLESS you really know what you are doing ##############*/
 
     #Current version && schema signature (Changes from version to version)
-    define('THIS_VERSION','1.7.0'); //Shown on admin panel
-    define('SCHEMA_SIGNATURE', 'd959a00e55c75e0c903b9e37324fd25d'); //MD5 signature of the db schema. (used to trigger upgrades)
+    define('THIS_VERSION','1.7-git'); //Shown on admin panel
+
+
+    require(INCLUDE_DIR.'class.osticket.php');
+    require(INCLUDE_DIR.'class.http.php');
+
+    // Determine the path in the URI used as the base of the osTicket
+    // installation
+    if (!defined('ROOT_PATH') && ($rp = osTicket::get_root_path(dirname(__file__))))
+        define('ROOT_PATH', rtrim($rp, '/').'/');
+
     #load config info
     $configfile='';
     if(file_exists(ROOT_DIR.'ostconfig.php')) //Old installs prior to v 1.6 RC5
@@ -89,12 +94,18 @@
     } elseif(file_exists(INCLUDE_DIR.'ost-config.php')) //NEW config file v 1.6 stable ++
         $configfile=INCLUDE_DIR.'ost-config.php';
     elseif(file_exists(ROOT_DIR.'setup/'))
-        header('Location: '.ROOT_PATH.'setup/');
+        Http::redirect(ROOT_PATH.'setup/');
 
-    if(!$configfile || !file_exists($configfile)) die('<b>Error loading settings. Contact admin.</b>');
+    if(!$configfile || !file_exists($configfile))
+       Http::response(500, '<b>Error loading settings. Contact admin.</b>');
 
     require($configfile);
     define('CONFIG_FILE',$configfile); //used in admin.php to check perm.
+
+    //Die if root path is not defined
+    if(!defined('ROOT_PATH') || !ROOT_PATH)
+        Http::response(500, "<b>Fatal Error:</b> unknown root path. Define
+            it in your 'ost-config.php'");
 
    //Path separator
     if(!defined('PATH_SEPARATOR')){
@@ -109,24 +120,26 @@
 
 
     #include required files
-    require(INCLUDE_DIR.'class.osticket.php');
+    require(INCLUDE_DIR.'class.misc.php');
     require(INCLUDE_DIR.'class.ostsession.php');
     require(INCLUDE_DIR.'class.usersession.php');
     require(INCLUDE_DIR.'class.pagenate.php'); //Pagenate helper!
     require(INCLUDE_DIR.'class.log.php');
-    require(INCLUDE_DIR.'class.mcrypt.php');
-    require(INCLUDE_DIR.'class.misc.php');
+    require(INCLUDE_DIR.'class.crypto.php');
     require(INCLUDE_DIR.'class.timezone.php');
-    require(INCLUDE_DIR.'class.http.php');
+    require(INCLUDE_DIR.'class.signal.php');
     require(INCLUDE_DIR.'class.nav.php');
+    require(INCLUDE_DIR.'class.page.php');
     require(INCLUDE_DIR.'class.format.php'); //format helpers
     require(INCLUDE_DIR.'class.validator.php'); //Class to help with basic form input validation...please help improve it.
     require(INCLUDE_DIR.'class.mailer.php');
-    require(INCLUDE_DIR.'mysql.php');
+    if (extension_loaded('mysqli'))
+        require_once INCLUDE_DIR.'mysqli.php';
+    else
+        require(INCLUDE_DIR.'mysql.php');
 
     #CURRENT EXECUTING SCRIPT.
     define('THISPAGE', Misc::currentURL());
-    define('THISURI', $_SERVER['REQUEST_URI']);
 
     # This is to support old installations. with no secret salt.
     if(!defined('SECRET_SALT')) define('SECRET_SALT',md5(TABLE_PREFIX.ADMIN_EMAIL));
@@ -155,6 +168,8 @@
     define('TEAM_TABLE',TABLE_PREFIX.'team');
     define('TEAM_MEMBER_TABLE',TABLE_PREFIX.'team_member');
 
+    define('PAGE_TABLE', TABLE_PREFIX.'page');
+
     define('FAQ_TABLE',TABLE_PREFIX.'faq');
     define('FAQ_ATTACHMENT_TABLE',TABLE_PREFIX.'faq_attachment');
     define('FAQ_TOPIC_TABLE',TABLE_PREFIX.'faq_topic');
@@ -172,6 +187,7 @@
     define('TICKET_EMAIL_INFO_TABLE',TABLE_PREFIX.'ticket_email_info');
 
     define('EMAIL_TABLE',TABLE_PREFIX.'email');
+    define('EMAIL_TEMPLATE_GRP_TABLE',TABLE_PREFIX.'email_template_group');
     define('EMAIL_TEMPLATE_TABLE',TABLE_PREFIX.'email_template');
 
     define('FILTER_TABLE',TABLE_PREFIX.'filter');
@@ -184,15 +200,27 @@
     define('API_KEY_TABLE',TABLE_PREFIX.'api_key');
     define('TIMEZONE_TABLE',TABLE_PREFIX.'timezone');
 
-    #Global overwrite
-    if($_SERVER['HTTP_X_FORWARDED_FOR']) //Can contain multiple IPs - use the last one.
-        $_SERVER['REMOTE_ADDR'] =  array_pop(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+    #Global override
+    if (isset($_SERVER['HTTP_X_FORWARDED_FOR']))
+        // Take the left-most item for X-Forwarded-For
+        $_SERVER['REMOTE_ADDR'] = array_pop(
+            explode(',', trim($_SERVER['HTTP_X_FORWARDED_FOR'])));
 
     #Connect to the DB && get configuration from database
     $ferror=null;
-    if (!db_connect(DBHOST,DBUSER,DBPASS) || !db_select_database(DBNAME)) {
-        $ferror='Unable to connect to the database';
-    } elseif(!($ost=osTicket::start(1)) || !($cfg = $ost->getConfig())) {
+    $options = array();
+    if (defined('DBSSLCA'))
+        $options['ssl'] = array(
+            'ca' => DBSSLCA,
+            'cert' => DBSSLCERT,
+            'key' => DBSSLKEY
+        );
+
+    if (!db_connect(DBHOST, DBUSER, DBPASS, $options)) {
+        $ferror='Unable to connect to the database -'.db_connect_error();
+    }elseif(!db_select_database(DBNAME)) {
+        $ferror='Unknown or invalid database '.DBNAME;
+    } elseif(!($ost=osTicket::start()) || !($cfg = $ost->getConfig())) {
         $ferror='Unable to load config info from DB. Get tech support.';
     }
 
@@ -201,15 +229,14 @@
         $msg=$ferror."\n\n".THISPAGE;
         Mailer::sendmail(ADMIN_EMAIL, 'osTicket Fatal Error', $msg, sprintf('"osTicket Alerts"<%s>', ADMIN_EMAIL));
         //Display generic error to the user
-        die("<b>Fatal Error:</b> Contact system administrator.");
-        exit;
+        Http::response(500, "<b>Fatal Error:</b> Contact system administrator.");
     }
 
     //Init
     $session = $ost->getSession();
 
     //System defaults we might want to make global//
-    #pagenation default - user can overwrite it!
+    #pagenation default - user can override it!
     define('DEFAULT_PAGE_LIMIT', $cfg->getPageSize()?$cfg->getPageSize():25);
 
     #Cleanup magic quotes crap.

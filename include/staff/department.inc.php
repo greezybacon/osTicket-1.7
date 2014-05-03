@@ -88,7 +88,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 <select name="tpl_id">
                     <option value="0">&mdash; System default &mdash;</option>
                     <?php
-                    $sql='SELECT tpl_id,name FROM '.EMAIL_TEMPLATE_TABLE.' tpl WHERE isactive=1 ORDER by name';
+                    $sql='SELECT tpl_id,name FROM '.EMAIL_TEMPLATE_GRP_TABLE.' tpl WHERE isactive=1 ORDER by name';
                     if(($res=db_query($sql)) && db_num_rows($res)){
                         while(list($id,$name)=db_fetch_row($res)){
                             $selected=($info['tpl_id'] && $id==$info['tpl_id'])?'selected="selected"':'';
@@ -119,8 +119,6 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 &nbsp;<span class="error">*&nbsp;<?php echo $errors['sla_id']; ?></span>
             </td>
         </tr>
-        <?php
-        if($dept && $dept->getNumUsers()){ ?>
         <tr>
             <td width="180" class="required">
                 Manager:
@@ -128,12 +126,11 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             <td>
                 <select name="manager_id">
                     <option value="0">&mdash; None &mdash;</option>
-                    <option value="0" disabled="disabled">Select Department Manager (Optional)</option>
                     <?php
                     $sql='SELECT staff_id,CONCAT_WS(", ",lastname, firstname) as name '
                         .' FROM '.STAFF_TABLE.' staff '
                         .' ORDER by name';
-                    if(($res=db_query($sql)) && db_num_rows($res)){
+                    if(($res=db_query($sql)) && db_num_rows($res)) {
                         while(list($id,$name)=db_fetch_row($res)){
                             $selected=($info['manager_id'] && $id==$info['manager_id'])?'selected="selected"':'';
                             echo sprintf('<option value="%d" %s>%s</option>',$id,$selected,$name);
@@ -144,9 +141,6 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 &nbsp;<span class="error">&nbsp;<?php echo $errors['manager_id']; ?></span>
             </td>
         </tr>
-        <?php 
-        } ?>
-
         <tr>
             <td width="180">
                 Group Membership:
@@ -158,7 +152,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
         </tr>
         <tr>
             <th colspan="2">
-                <em><strong>Auto Response Settings</strong>: Overwrite global auto-response settings for tickets routed to the Dept.</em>
+                <em><strong>Auto Response Settings</strong>: Override global auto-response settings for tickets routed to the Dept.</em>
             </th>
         </tr>
         <tr>
@@ -167,7 +161,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             </td>
             <td>
                 <input type="checkbox" name="ticket_auto_response" value="0" <?php echo !$info['ticket_auto_response']?'checked="checked"':''; ?> >
-                
+
                 <strong>Disable</strong> new ticket auto-response for this Dept.
             </td>
         </tr>
@@ -192,7 +186,9 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                     $sql='SELECT email_id,email,name FROM '.EMAIL_TABLE.' email ORDER by name';
                     if(($res=db_query($sql)) && db_num_rows($res)){
                         while(list($id,$email,$name)=db_fetch_row($res)){
-                            $selected=($info['email_id'] && $id==$info['email_id'])?'selected="selected"':'';
+                            $selected = (isset($info['autoresp_email_id'])
+                                    && $id == $info['autoresp_email_id'])
+                                ? 'selected="selected"' : '';
                             if($name)
                                 $email=Format::htmlchars("$name <$email>");
                             echo sprintf('<option value="%d" %s>%s</option>',$id,$selected,$email);
@@ -217,7 +213,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
              .' ORDER BY group_name';
          if(($res=db_query($sql)) && db_num_rows($res)){
             while(list($id, $name, $members) = db_fetch_row($res)) {
-                if($members>0) 
+                if($members>0)
                     $members=sprintf('<a href="staff.php?a=filter&gid=%d">%d</a>', $id, $members);
 
                 $ck=($info['groups'] && in_array($id,$info['groups']))?'checked="checked"':'';

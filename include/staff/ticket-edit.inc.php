@@ -2,6 +2,9 @@
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->canEditTickets() || !$ticket) die('Access Denied');
 
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$ticket->getUpdateInfo());
+if ($_POST)
+    $info['duedate'] = Format::date($cfg->getDateFormat(),
+       strtotime($info['duedate']));
 ?>
 <form action="tickets.php?id=<?php echo $ticket->getId(); ?>&a=edit" method="post" id="save"  enctype="multipart/form-data">
  <?php csrf_token(); ?>
@@ -50,7 +53,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$ticket->getUpdateInfo());
         </tr>
         <tr>
             <th colspan="2">
-                <em><strong>Ticket Information</strong>: Due date overwrites SLA's grace period.</em>
+                <em><strong>Ticket Information</strong>: Due date overrides SLA's grace period.</em>
             </th>
         </tr>
         <tr>
@@ -146,7 +149,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$ticket->getUpdateInfo());
                 $min=$hr=null;
                 if($info['time'])
                     list($hr, $min)=explode(':', $info['time']);
-                    
+
                 echo Misc::timeDropdown($hr, $min, 'time');
                 ?>
                 &nbsp;<font class="error">&nbsp;<?php echo $errors['duedate']; ?>&nbsp;<?php echo $errors['time']; ?></font>

@@ -90,13 +90,14 @@ class TicketsAjaxAPI extends AjaxController {
         $result=array();
         $select = 'SELECT count( DISTINCT ticket.ticket_id) as tickets ';
         $from = ' FROM '.TICKET_TABLE.' ticket ';
-        $where = ' WHERE 1 ';
 
         //Access control.
-        $where.=' AND ( ticket.staff_id='.db_input($thisstaff->getId());
+        $where = ' WHERE ( (ticket.staff_id='.db_input($thisstaff->getId())
+                    .' AND ticket.status="open" )';
 
         if(($teams=$thisstaff->getTeams()) && count(array_filter($teams)))
-            $where.=' OR ticket.team_id IN('.implode(',', db_input(array_filter($teams))).')';
+            $where.=' OR (ticket.team_id IN ('.implode(',', db_input(array_filter($teams)))
+                   .' ) AND ticket.status="open")';
 
         if(!$thisstaff->showAssignedOnly() && ($depts=$thisstaff->getDepts()))
             $where.=' OR ticket.dept_id IN ('.implode(',', db_input($depts)).')';
@@ -191,7 +192,7 @@ class TicketsAjaxAPI extends AjaxController {
     function acquireLock($tid) {
         global $cfg,$thisstaff;
 
-        if(!$tid or !is_numeric($tid) or !$thisstaff or !$cfg or !$cfg->getLockTime())
+        if(!$tid || !is_numeric($tid) || !$thisstaff || !$cfg || !$cfg->getLockTime())
             return 0;
 
         if(!($ticket = Ticket::lookup($tid)) || !$ticket->checkStaffAccess($thisstaff))
@@ -218,10 +219,10 @@ class TicketsAjaxAPI extends AjaxController {
     function renewLock($tid, $id) {
         global $thisstaff;
 
-        if(!$id or !is_numeric($id) or !$thisstaff)
+        if(!$tid || !is_numeric($tid) || !$id || !is_numeric($id) || !$thisstaff)
             return $this->json_encode(array('id'=>0, 'retry'=>true));
 
-        $lock= TicketLock::lookup($id);
+        $lock= TicketLock::lookup($id, $tid);
         if(!$lock || !$lock->getStaffId() || $lock->isExpired()) //Said lock doesn't exist or is is expired
             return self::acquireLock($tid); //acquire the lock
 

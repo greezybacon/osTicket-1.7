@@ -22,8 +22,13 @@ require(CLIENTINC_DIR.'header.inc.php');
     <div class="container">
 		<div class="row">
 			<div class="twelvecol last">
+<?php
+if($cfg && ($page = $cfg->getLandingPage())) {
+    echo $page->getBody();
+} else { ?>
 				<p class="headline">In order to streamline support requests and better serve you, we utilize a support ticket system.</p>
 				<p>Every support request is assigned a unique ticket number which you can use to track the progress and responses online. For your reference we provide complete archives and history of all your support requests. A valid email address is required.</p>
+<?php } ?>
 			</div>
 		</div>
 	</div>
